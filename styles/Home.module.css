@@ -1,0 +1,12 @@
+#__next {
+  /* background: red; */
+  /* background: url(../assets/images/landing.jpg);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  background-attachment: fixed; */
+}
+
+body > #__next {
+  background: red;
+}
