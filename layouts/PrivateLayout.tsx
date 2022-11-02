@@ -30,6 +30,14 @@ const NotificationsPopper = () => {
     setOpen(previousOpen => !previousOpen)
   }
 
+  const handleClose = (event: Event | React.SyntheticEvent) => {
+    if (anchorEl && anchorEl.contains(event.target as HTMLElement)) {
+      return
+    }
+
+    setOpen(false)
+  }
+
   const canBeOpen = open && Boolean(anchorEl)
   const id = canBeOpen ? 'notifications-popup' : undefined
 
@@ -38,10 +46,21 @@ const NotificationsPopper = () => {
       <IconButton aria-describedby={id} color='inherit' onClick={handleClick}>
         <NotificationsIcon />
       </IconButton>
-      <Popper id={id} open={open} anchorEl={anchorEl} disablePortal transition>
+      <Popper
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        placement='bottom-end'
+        disablePortal
+        transition
+      >
         {({ TransitionProps }) => (
           <Fade {...TransitionProps} timeout={350}>
-            <Paper>The content of the Popper.</Paper>
+            <Paper sx={{ p: 1 }}>
+              <ClickAwayListener onClickAway={handleClose}>
+                <div>Notifications coming soon!</div>
+              </ClickAwayListener>
+            </Paper>
           </Fade>
         )}
       </Popper>
