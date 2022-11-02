@@ -12,8 +12,7 @@ import theme from '../theme'
 import createEmotionCache from '../utils/createEmotionCache'
 import PublicLayout from '../layouts/PublicLayout'
 import '../styles/globals.css'
-
-const BASE_URL = 'http://localhost:3000'
+import { BASE_URL } from '../utils/constants'
 
 // Client-side cache, shared for the whole session of the user in the browser.
 const clientSideEmotionCache = createEmotionCache()

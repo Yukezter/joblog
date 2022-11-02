@@ -10,9 +10,7 @@ import throttle from 'lodash.throttle'
 import parse from 'autosuggest-highlight/parse'
 import { Place } from '../types'
 
-// const { GOOGLE_MAPS_API_KEY } = process.env
-
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAs9qdCdCJHxcsO187eV1gOgynjs19JJsY'
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 type BaseAutocomplete = Omit<
   AutocompleteProps<Place, false, false, false>,
