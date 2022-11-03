@@ -8,8 +8,10 @@ import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
+import Alert, { AlertProps } from '@mui/material/Alert'
+import Collapse from '@mui/material/Collapse'
 // import GoogleIcon from '@mui/icons-material/Google'
-import GitHubIcon from '@mui/icons-material/GitHub'
+import TwitterIcon from '@mui/icons-material/Twitter'
 
 const GoogleIcon = () => (
   <svg
@@ -41,6 +43,53 @@ const GoogleIcon = () => (
 )
 
 const SignIn: NextPage = () => {
+  const emailRef = React.useRef<HTMLInputElement>(null)
+  const [loading, setLoading] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
+  const [alertState, setAlertState] = React.useState<{
+    severity: AlertProps['severity']
+    message: string
+  } | null>(null)
+
+  const handleSubmitEmail: React.FormEventHandler<HTMLFormElement> = e => {
+    e.preventDefault()
+
+    const signInWithEmail = async () => {
+      try {
+        setLoading(true)
+
+        const email = emailRef.current?.value
+        const response = await signIn('email', { email, redirect: false })
+
+        if (response?.error) {
+          setAlertState({
+            severity: 'error',
+            message: `Unable to send sign in link`,
+          })
+        } else {
+          emailRef.current!.value = ''
+
+          setAlertState({
+            severity: 'info',
+            message: `A sign in link been sent to ${email}`,
+          })
+        }
+      } catch (err) {
+        console.log(err)
+
+        setAlertState({
+          severity: 'error',
+          message: `Unable to send sign in link`,
+        })
+      } finally {
+        setLoading(false)
+        setOpen(true)
+      }
+    }
+
+    signInWithEmail()
+  }
+
   return (
     <>
       <Head>
@@ -48,20 +97,26 @@ const SignIn: NextPage = () => {
         <meta name='description' content='Sign in to your JobLog account.' />
       </Head>
       <Box display='flex' flexDirection='column' maxWidth={360} mx='auto'>
-        <Typography variant='h4' mb={3}>
+        <Typography variant='h4' mb={1}>
           Sign In
         </Typography>
-        <TextField
-          label='Email'
-          placeholder='Enter your email'
-          InputLabelProps={{
-            shrink: true,
-          }}
-          sx={{ mb: 2 }}
-        />
-        <Button variant='contained' size='large' sx={{ mb: 2 }}>
-          Sign In
-        </Button>
+        <Collapse in={open} onExited={() => setAlertState(null)}>
+          <Alert severity={alertState?.severity} onClose={() => setOpen(false)}>
+            {alertState?.message}
+          </Alert>
+        </Collapse>
+        <Box component='form' display='flex' flexDirection='column' onSubmit={handleSubmitEmail}>
+          <TextField
+            inputRef={emailRef}
+            label='Email'
+            placeholder='Enter your email'
+            InputLabelProps={{ shrink: true }}
+            sx={{ mt: 2, mb: 2 }}
+          />
+          <Button type='submit' disabled={loading} variant='contained' size='large' sx={{ mb: 2 }}>
+            {loading ? 'Loading...' : 'Sign In'}
+          </Button>
+        </Box>
         <Box display='flex' alignItems='center' mb={3}>
           <div style={{ width: '100%', borderBottom: '2px solid grey' }} />
           <Typography variant='body1' color='grey' mx={2}>
@@ -81,15 +136,16 @@ const SignIn: NextPage = () => {
         </Button>
         <Button
           variant='contained'
-          color='success'
+          color='info'
           size='large'
-          startIcon={<GitHubIcon />}
+          startIcon={<TwitterIcon />}
           sx={{
             mb: 3,
+            bgcolor: '#1D9BF0',
           }}
-          onClick={() => signIn('github').catch(err => console.log(err))}
+          onClick={() => signIn('twitter').catch(err => console.log(err))}
         >
-          Sign in with GitHub
+          Sign in with Twitter
         </Button>
       </Box>
     </>

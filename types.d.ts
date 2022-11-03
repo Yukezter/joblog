@@ -1,6 +1,27 @@
 import type { DefaultUser } from 'next-auth'
 import { WithId } from 'mongodb'
 
+/* Environment variables */
+
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      NEXTAUTH_SECRET: string
+      NEXTAUTH_URL: string
+      MONGODB_URI: string
+      EMAIL_SERVER: string
+      EMAIL_FROM: string
+      GOOGLE_CLIENT_ID: string
+      GOOGLE_CLIENT_SECRET: string
+      TWITTER_CLIENT_ID: string
+      TWITTER_CLIENT_SECRET: string
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: string
+    }
+  }
+}
+
+/* NextAuth */
+
 declare module 'next-auth' {
   interface Session {
     user?: DefaultUser & {
@@ -77,22 +98,18 @@ export type Person = {
 }
 
 export type JobApplication = {
-  // Basic Information
   companyName: string
   jobTitle: string
   jobLocationType: JobLocationType
   jobLocation: Place | null
   jobType: JobType
-  // Compensation
   pay: JobPay
-  // Application Details
   dateApplied: number
   jobBoard: string
   submissionMethod: SubmissionMethod
   applicationLink: string | null
   applicationStatus: ApplicationStatusOptions
   interviewDate: number | null
-  // Notable People
   notablePeople: Person[]
 }
 
