@@ -70,7 +70,7 @@ const Home: NextPage = () => {
         >
           Sign In
         </Button>
-        <Button component={Link} href='/auth/signup' noLinkStyle variant='contained' size='large'>
+        <Button component={Link} href='/auth/signin' noLinkStyle variant='contained' size='large'>
           Create Account
         </Button>
       </Box>
