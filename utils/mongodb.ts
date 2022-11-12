@@ -9,7 +9,7 @@ declare global {
 }
 
 const uri = process.env.MONGODB_URI
-const options: MongoClientOptions = {}
+const options: MongoClientOptions = { ignoreUndefined: true }
 
 let client
 let clientPromise: Promise<MongoClient>

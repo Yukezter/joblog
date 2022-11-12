@@ -1,4 +1,4 @@
-import { JobApplicationResponse } from '../types'
+import { JobApplication } from '../types'
 
 export const { format: toLocale } = new Intl.NumberFormat('en-US', {
   currency: 'USD',
@@ -10,7 +10,7 @@ const { format: toCompact } = new Intl.NumberFormat('en-US', {
   notation: 'compact',
 })
 
-// export const formatPay = (pay: JobApplicationResponse['pay']) => {
+// export const formatPay = (pay: JobApplication['pay']) => {
 //   let text = format(pay.amount[0])
 
 //   if (pay.type === 'range') {
@@ -20,7 +20,7 @@ const { format: toCompact } = new Intl.NumberFormat('en-US', {
 //   return text.concat(`/${pay.rate}`)
 // }
 
-export const formatPay = (pay: JobApplicationResponse['pay']) => {
+export const formatPay = (pay: JobApplication['pay']) => {
   let text = toCompact(pay.amount1)
 
   if (pay.type === 'range') {
