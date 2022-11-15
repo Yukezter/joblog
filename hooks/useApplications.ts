@@ -26,8 +26,6 @@ const useApplications = (filters: Filters, sortBy: SortBy) => {
       sortBy: queryKey[2] as string,
     })
 
-    console.log(params.toString())
-
     const res = await httpAPI.get<Data>(`/applications?${params.toString()}`)
     return res.data
   })

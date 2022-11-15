@@ -1,3 +1,4 @@
+import '../styles/globals.css'
 import React from 'react'
 import Head from 'next/head'
 import type { NextPage } from 'next'
@@ -10,15 +11,17 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import theme from '../theme'
 import createEmotionCache from '../utils/createEmotionCache'
+import { AuthProvider } from '../context/AuthContext'
 import PublicLayout from '../layouts/PublicLayout'
-import '../styles/globals.css'
 import { BASE_URL } from '../utils/constants'
+import Root from '../components/Root'
 
 // Client-side cache, shared for the whole session of the user in the browser.
 const clientSideEmotionCache = createEmotionCache()
 
 export type NextPageWithLayout<P = {}> = NextPage<P> & {
   Layout?: React.FC
+  // Auth?: React.FC
 }
 
 interface MyAppProps extends AppProps {
@@ -45,9 +48,11 @@ const MyApp = ({
         },
       })
   )
+
   const router = useRouter()
   const canonicalURL = BASE_URL + router.asPath
   const Layout = Component.Layout || PublicLayout
+  // const Auth = Component.Auth || (({ children }: React.PropsWithChildren) => <>{children}</>)
 
   return (
     <SessionProvider session={session}>
@@ -60,9 +65,13 @@ const MyApp = ({
           </Head>
           <ThemeProvider theme={theme}>
             <CssBaseline />
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
+            <Root>
+              {/* <AuthProvider> */}
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+              {/* </AuthProvider> */}
+            </Root>
           </ThemeProvider>
         </CacheProvider>
         {/* </Hydrate> */}

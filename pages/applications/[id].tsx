@@ -1,6 +1,6 @@
 import React from 'react'
-import { GetServerSideProps } from 'next'
-// import { useRouter } from 'next/router'
+// import { GetServerSideProps } from 'next'
+import { useRouter } from 'next/router'
 import { styled } from '@mui/material/styles'
 import ArrowBackIosSharpIcon from '@mui/icons-material/ArrowBackIosSharp'
 // import AddIcon from '@mui/icons-material/Add'
@@ -10,7 +10,7 @@ import Button from '@mui/material/Button'
 import Grid from '@mui/material/Unstable_Grid2'
 import Skeleton from '@mui/material/Skeleton'
 import type { NextPageWithLayout } from '../_app'
-import getServerSession from '../../utils/getServerSession'
+// import getServerSession from '../../utils/getServerSession'
 import { formatPay } from '../../utils/formatting'
 import useApplication from '../../hooks/useApplication'
 import PrivateLayout from '../../layouts/PrivateLayout'
@@ -22,28 +22,28 @@ const BorderBox = styled((props: BoxProps) => (
   <Box px={4} py={3} border={theme => `1px solid ${theme.palette.divider}`} {...props} />
 ))({})
 
-export const getServerSideProps: GetServerSideProps = async context => {
-  const session = await getServerSession(context.req, context.res)
+// export const getServerSideProps: GetServerSideProps = async context => {
+//   // const session = await getServerSession(context.req, context.res)
 
-  if (!session || !session.user) {
-    return {
-      redirect: {
-        destination: '/auth/signin',
-        permanent: false,
-      },
-    }
-  }
+//   // if (!session || !session.user) {
+//   //   return {
+//   //     redirect: {
+//   //       destination: '/auth/signin',
+//   //       permanent: false,
+//   //     },
+//   //   }
+//   // }
 
-  return {
-    props: {
-      id: context.query.id,
-    },
-  }
-}
+//   return {
+//     props: {
+//       id: context.query.id,
+//     },
+//   }
+// }
 
-const Application: NextPageWithLayout<{ id?: string }> = ({ id }) => {
-  // const router = useRouter()
-  // const { id } = router.query
+const Application: NextPageWithLayout = () => {
+  const router = useRouter()
+  const { id } = router.query
   const { data } = useApplication(id as string)
 
   return (
@@ -116,8 +116,10 @@ const Application: NextPageWithLayout<{ id?: string }> = ({ id }) => {
               <Typography variant='body1'>
                 {!data ? (
                   <Skeleton width='80%' sx={{ maxWidth: 200 }} />
+                ) : data.jobLocation ? (
+                  `${data.jobLocation.structured_formatting.main_text}, ${data.jobLocation.structured_formatting.secondary_text}`
                 ) : (
-                  data.jobLocation?.structured_formatting.secondary_text || 'N/A'
+                  'N/A'
                 )}
               </Typography>
             </Grid>
@@ -162,7 +164,7 @@ const Application: NextPageWithLayout<{ id?: string }> = ({ id }) => {
           <Typography variant='h5' mb={2}>
             Notable People
           </Typography>
-          <Grid container rowSpacing={2} columnSpacing={2}>
+          <Grid container rowSpacing={2} columnSpacing={2} mb={1}>
             {(!data ? Array.from(Array<undefined>(2)) : data.notablePeople).map((person, index) => (
               <Grid key={index} xs={12} md={6}>
                 {!person ? (

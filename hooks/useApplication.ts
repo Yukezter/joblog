@@ -3,7 +3,6 @@ import httpAPI from '../utils/httpAPI'
 import { Data } from '../pages/api/applications/[id]'
 
 const useApplication = (id?: string) => {
-  console.log('ID:', id)
   return useQuery(
     ['applications', id],
     async () => {

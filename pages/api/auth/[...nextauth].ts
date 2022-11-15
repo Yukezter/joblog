@@ -1,3 +1,4 @@
+// import { NextApiRequest, NextApiResponse } from 'next'
 import NextAuth, { NextAuthOptions, Theme } from 'next-auth'
 import { MongoDBAdapter } from '@next-auth/mongodb-adapter'
 import EmailProvider from 'next-auth/providers/email'
@@ -45,9 +46,22 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/signin',
   },
   callbacks: {
+    signIn({ user }) {
+      if (!user.notifications) {
+        user.notifications = {
+          on: false,
+          hourBefore: false,
+          dayBefore: false,
+          weekBefore: false,
+        }
+      }
+
+      return true
+    },
     session: ({ session, user }) => {
       if (session.user) {
-        session.user.id = user.id
+        session.user = user
+        console.log(user)
       }
 
       return session
@@ -115,5 +129,9 @@ function html(params: { url: string; host: string; theme: Theme }) {
 function text({ url, host }: { url: string; host: string }) {
   return `Sign in to ${host}\n${url}\n\n`
 }
+
+// async function auth(req: NextApiRequest, res: NextApiResponse) {
+
+// }
 
 export default NextAuth(authOptions)

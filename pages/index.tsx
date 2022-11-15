@@ -1,13 +1,13 @@
 // import '../styles/Home.module.css'
-import type { GetServerSideProps, NextPage } from 'next'
+import type { NextPage, GetServerSideProps } from 'next'
 import Head from 'next/head'
 import GlobalStyles from '@mui/material/GlobalStyles'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
+import landingImage from '../assets/images/landing.jpg'
 import getServerSession from '../utils/getServerSession'
 import Link from '../components/Link'
-import landingImage from '../assets/images/landing.jpg'
 
 export const getServerSideProps: GetServerSideProps = async context => {
   const session = await getServerSession(context.req, context.res)
@@ -22,7 +22,9 @@ export const getServerSideProps: GetServerSideProps = async context => {
   }
 
   return {
-    props: {},
+    props: {
+      session,
+    },
   }
 }
 

@@ -1,9 +1,9 @@
 import React from 'react'
-// import dayjs, { Dayjs } from 'dayjs'
-import { useRouter } from 'next/router'
+import Router from 'next/router'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { useForm, Controller, useFieldArray } from 'react-hook-form'
 import { styled } from '@mui/material/styles'
 import ArrowForwardIosSharpIcon from '@mui/icons-material/ArrowForwardIosSharp'
@@ -18,7 +18,6 @@ import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
-// import DatePickerIcon from '@mui/icons-material/DateRangeOutlined'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Close'
 import AddIcon from '@mui/icons-material/Add'
@@ -27,9 +26,8 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import type { JobApplication, JobApplicationResponse, PayType, Person } from '../types'
-import { toLocale } from '../utils/formatting'
-import type { AutocompleteOptions } from '../services/applications'
+import type { JobApplication, Person } from '../types'
+import useApplicationFormOptions from '../hooks/useApplicationFormOptions'
 import Link from '../components/Link'
 import CreatableAutocomplete from './CreatableAutocomplete'
 import PlacesAutocomplete from './PlacesAutocomplete'
@@ -70,14 +68,14 @@ const AccordionDetails = styled(MuiAccordionDetails)(({ theme }) => ({
 
 type PersonFormProps = {
   handleClose: () => void
-  positions: AutocompleteOptions['peoplePositions']
-  // people: Person[]
+  positions: ReturnType<typeof useApplicationFormOptions>['data']['peoplePositions']
   selectedPerson?: Person
   savePerson: (person: Person) => void
 }
 
 const PersonForm = (props: PersonFormProps) => {
   const { handleClose, positions, selectedPerson, savePerson } = props
+
   const {
     register,
     handleSubmit,
@@ -167,40 +165,31 @@ const PersonForm = (props: PersonFormProps) => {
   )
 }
 
-// type JobApplicationFields = Omit<JobApplication, 'pay'> & {
-//   pay: Omit<JobApplication['pay'], 'amount1' | 'amount2'> & {
-//     amount1: string
-//     amount2?: string
-//   }
-// }
-
 export type ApplicationFormProps = {
-  autocompleteOptions: AutocompleteOptions
-  defaultValues?: JobApplicationResponse
+  defaultValues?: JobApplication
   onSubmit: (data: JobApplication) => void
-  redirect?: boolean
+  isLoading: boolean
+  redirectTo?: string
 }
 
 const ApplicationForm = (props: ApplicationFormProps) => {
-  const router = useRouter()
-
-  React.useEffect(() => {
-    if (props.redirect) {
-      router.push('/applications')
-    }
-  }, [props.redirect, router])
-
   // const isAddMode = !props.defaultValues
+  const formOptions = useApplicationFormOptions()
   const [expanded, setExpanded] = React.useState<string | false>('panel1')
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [selectedPersonIndex, setSelectedPersonIndex] = React.useState<number>()
+
+  React.useEffect(() => {
+    if (props.redirectTo) {
+      Router.push(props.redirectTo)
+    }
+  }, [props.redirectTo])
 
   const {
     register,
     handleSubmit,
     control,
     watch,
-    reset,
     resetField,
     formState: { errors },
   } = useForm<JobApplication>({
@@ -213,7 +202,6 @@ const ApplicationForm = (props: ApplicationFormProps) => {
       pay: {
         type: 'exact',
         amount1: 0,
-        // amount2: '',
         rate: 'year',
       },
       dateApplied: new Date().getTime(),
@@ -232,15 +220,8 @@ const ApplicationForm = (props: ApplicationFormProps) => {
     name: 'notablePeople',
   })
 
-  // const amountFields = useFieldArray({
-  //   control,
-  //   name: 'pay.amount' as any,
-  // })
-
   const amountType = watch('pay.type')
   const applicationStatus = watch('applicationStatus')
-
-  console.log(errors)
 
   const onSubmit = handleSubmit(data => {
     props.onSubmit(data as JobApplication)
@@ -301,14 +282,10 @@ const ApplicationForm = (props: ApplicationFormProps) => {
   }
 
   return (
-    <form
-      // action='/api/applications/create'
-      // method='POST'
-      onSubmit={onSubmit}
-    >
+    <form onSubmit={onSubmit}>
       <div>
         <Accordion expanded={expanded === 'panel1'} onChange={handleChange('panel1')}>
-          <AccordionSummary aria-controls='panel1d-content' id='panel1d-header'>
+          <AccordionSummary aria-controls='panel1-content' id='panel1-header'>
             <Typography variant='h5'>Basic Information</Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -332,7 +309,7 @@ const ApplicationForm = (props: ApplicationFormProps) => {
                       <CreatableAutocomplete
                         {...field}
                         id='job-title-creatable-autocomplete'
-                        options={props.autocompleteOptions.jobTitles}
+                        options={formOptions.data?.jobTitles}
                         TextFieldProps={{
                           label: 'Job Title *',
                           placeholder: 'Job Title',
@@ -371,7 +348,10 @@ const ApplicationForm = (props: ApplicationFormProps) => {
                       <PlacesAutocomplete
                         placeholder='Job Location'
                         fullWidth
-                        // TextFieldProps
+                        TextFieldProps={{
+                          label: 'Location',
+                          placeholder: 'Location',
+                        }}
                         {...field}
                       />
                     )}
@@ -404,7 +384,7 @@ const ApplicationForm = (props: ApplicationFormProps) => {
           </AccordionDetails>
         </Accordion>
         <Accordion expanded={expanded === 'panel2'} onChange={handleChange('panel2')}>
-          <AccordionSummary aria-controls='panel4d-content' id='panel4d-header'>
+          <AccordionSummary aria-controls='panel2-content' id='panel2-header'>
             <Typography variant='h5'>Compensation</Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -419,10 +399,13 @@ const ApplicationForm = (props: ApplicationFormProps) => {
                       <TextField
                         {...field}
                         onChange={event => {
-                          const type = event.target.value
-                          const amount2 = props.defaultValues?.pay.amount2
                           resetField('pay.amount2', {
-                            defaultValue: type === 'range' ? amount2 ?? 0 : undefined,
+                            defaultValue:
+                              event.target.value === 'range'
+                                ? props.defaultValues?.pay.type === 'range'
+                                  ? props.defaultValues.pay.amount2
+                                  : 0
+                                : undefined,
                           })
 
                           onChange(event)
@@ -522,8 +505,8 @@ const ApplicationForm = (props: ApplicationFormProps) => {
             </Box>
           </AccordionDetails>
         </Accordion>
-        <Accordion expanded={expanded === 'panel4'} onChange={handleChange('panel4')}>
-          <AccordionSummary aria-controls='panel2d-content' id='panel2d-header'>
+        <Accordion expanded={expanded === 'panel3'} onChange={handleChange('panel3')}>
+          <AccordionSummary aria-controls='panel3-content' id='panel3-header'>
             <Typography variant='h5'>Application Details</Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -569,7 +552,7 @@ const ApplicationForm = (props: ApplicationFormProps) => {
                       <CreatableAutocomplete
                         {...field}
                         id='job-board-creatable-autocomplete'
-                        options={props.autocompleteOptions.jobBoards}
+                        options={formOptions.data?.jobBoards}
                         TextFieldProps={{
                           label: 'Job Board *',
                           placeholder: 'Job Board',
@@ -638,14 +621,18 @@ const ApplicationForm = (props: ApplicationFormProps) => {
                   <Controller
                     name='interviewDate'
                     control={control}
-                    // rules={{ required: applicationStatus === 'Interview' }}
+                    rules={{ required: applicationStatus === 'Interview' }}
                     render={({ field }) => (
                       <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <DatePicker
+                        <DateTimePicker
                           {...field}
+                          onChange={value => {
+                            field.onChange(value ? new Date(value).getTime() : null)
+                          }}
                           disabled={applicationStatus !== 'Interview'}
-                          views={['day']}
-                          label='Interview Date'
+                          views={['day', 'hours', 'minutes']}
+                          label='Interview Date and Time'
+                          disablePast
                           renderInput={params => (
                             <TextField
                               {...params}
@@ -665,8 +652,8 @@ const ApplicationForm = (props: ApplicationFormProps) => {
             </Box>
           </AccordionDetails>
         </Accordion>
-        <Accordion expanded={expanded === 'panel5'} onChange={handleChange('panel5')}>
-          <AccordionSummary aria-controls='panel5d-content' id='panel5d-header'>
+        <Accordion expanded={expanded === 'panel4'} onChange={handleChange('panel4')}>
+          <AccordionSummary aria-controls='panel4-content' id='panel4-header'>
             <Typography variant='h5'>Notable People</Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -714,7 +701,7 @@ const ApplicationForm = (props: ApplicationFormProps) => {
               >
                 <PersonForm
                   handleClose={handleCloseDialog}
-                  positions={props.autocompleteOptions.peoplePositions}
+                  positions={formOptions.data?.peoplePositions}
                   savePerson={savePerson(selectedPersonIndex)}
                   {...(selectedPersonIndex !== undefined && {
                     selectedPerson: fields[selectedPersonIndex],
@@ -737,8 +724,8 @@ const ApplicationForm = (props: ApplicationFormProps) => {
         >
           Cancel
         </Button>
-        <Button type='submit' variant='contained' size='large'>
-          Save
+        <Button type='submit' disabled={props.isLoading} variant='contained' size='large'>
+          {props.isLoading ? 'Saving...' : 'Save'}
         </Button>
       </Box>
     </form>

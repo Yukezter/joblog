@@ -1,20 +1,25 @@
-import { AxiosResponse } from 'axios'
 import { useQueryClient, useMutation, UseMutationOptions } from '@tanstack/react-query'
 import httpAPI from '../utils/httpAPI'
-import { Data } from '../pages/api/applications/edit/[id]'
+import { Body, Data } from '../pages/api/applications/edit/[id]'
 
-const useEditApplication = (
-  id: string,
-  options: UseMutationOptions<AxiosResponse<void>, unknown, Data> = {}
-) => {
+type Variables = {
+  id: string
+  data: Body
+}
+
+const useEditApplication = (options: UseMutationOptions<Data, unknown, Variables> = {}) => {
   const queryClient = useQueryClient()
 
-  return useMutation<AxiosResponse<void>, unknown, Data>(
-    ['applications', 'edit', id],
-    async data => httpAPI.post<void>(`/applications/edit/${id}`, data),
+  return useMutation<Data, unknown, Variables>(
+    ['applications', 'edit'],
+    async ({ id, data }) => {
+      const response = await httpAPI.post(`/applications/edit/${id}`, data)
+      return response.data
+    },
     {
       ...options,
-      async onSuccess() {
+      async onSuccess(data, { id }) {
+        queryClient.setQueryData(['applications', id], data)
         await queryClient.resetQueries(['applications'], { exact: true })
       },
     }

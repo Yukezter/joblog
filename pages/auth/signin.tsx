@@ -42,6 +42,28 @@ const GoogleIcon = () => (
   </svg>
 )
 
+export const getServerSideProps: GetServerSideProps = async context => {
+  const session = await getServerSession(context.req, context.res)
+
+  if (session) {
+    return {
+      redirect: {
+        destination: '/applications',
+        permanent: false,
+      },
+      props: {
+        session,
+      },
+    }
+  }
+
+  return {
+    props: {
+      session,
+    },
+  }
+}
+
 const SignIn: NextPage = () => {
   const emailRef = React.useRef<HTMLInputElement>(null)
   const [loading, setLoading] = React.useState(false)
@@ -150,23 +172,6 @@ const SignIn: NextPage = () => {
       </Box>
     </>
   )
-}
-
-export const getServerSideProps: GetServerSideProps = async context => {
-  const session = await getServerSession(context.req, context.res)
-
-  if (session) {
-    return {
-      redirect: {
-        destination: '/applications',
-        permanent: false,
-      },
-    }
-  }
-
-  return {
-    props: {},
-  }
 }
 
 export default SignIn

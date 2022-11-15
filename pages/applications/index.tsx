@@ -1,5 +1,5 @@
 import React from 'react'
-import { GetServerSideProps } from 'next'
+// import { GetServerSideProps } from 'next'
 import type { NextPageWithLayout } from '../_app'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -17,16 +17,39 @@ import Skeleton from '@mui/material/Skeleton'
 import SpeedDial from '@mui/material/SpeedDial'
 import SpeedDialIcon from '@mui/material/SpeedDialIcon'
 import ApplicationIcon from '@mui/icons-material/StickyNote2'
-// import ArrowDownIcon from '@mui/icons-material/ArrowDropDown'
 import AddIcon from '@mui/icons-material/Add'
-import { applicationStatuses, jobLocationTypes, jobTypes } from '../../types.d'
-import getServerSession from '../../utils/getServerSession'
+import { JOB_TYPES, JOB_LOCATION_TYPES, APPLICATION_STATUSES } from '../../utils/constants'
+// import getServerSession from '../../utils/getServerSession'
 import { formatPay } from '../../utils/formatting'
 import useApplications from '../../hooks/useApplications'
 import PrivateLayout from '../../layouts/PrivateLayout'
 import Link from '../../components/Link'
 import ApplicationStatus from '../../components/ApplicationStatus'
-// import { sortByOptions } from '../api/applications'
+
+// export const getServerSideProps: GetServerSideProps = async context => {
+//   const session = await getServerSession(context.req, context.res)
+
+//   if (!session) {
+//     return {
+//       redirect: {
+//         destination: '/auth/signin',
+//         permanent: false,
+//       },
+//     }
+//   }
+
+//   // const queryClient = new QueryClient()
+
+//   // await queryClient.prefetchQuery(['applications'], async () => {
+//   //   return Application.find<PartialApplication>({ owner: '123123' }).lean()
+//   // })
+
+//   return {
+//     props: {
+//       // dehydratedState: dehydrate(queryClient),
+//     },
+//   }
+// }
 
 type ListOptionSelectProps<T> = {
   id?: string
@@ -289,7 +312,7 @@ const Applications: NextPageWithLayout = () => {
             <Typography fontWeight={600} mb={1}>
               Status
             </Typography>
-            {applicationStatuses.map(status => (
+            {APPLICATION_STATUSES.map(status => (
               <Box key={status} display='flex' justifyContent='space-between' alignItems='center'>
                 <ApplicationStatus status={status} />
                 <Typography variant='caption'>
@@ -312,49 +335,32 @@ const Applications: NextPageWithLayout = () => {
               applicationsCount={data?.length}
             />
             <Box pt={2} pb={1} whiteSpace='nowrap' overflow='auto'>
-              {/* {['Position'].map(filter => (
-                <Button
-                  key={filter}
-                  disabled={isLoading}
-                  variant='outlined'
-                  endIcon={<ArrowDownIcon />}
-                  sx={{
-                    mr: 1,
-                    textTransform: 'none',
-                    '& .MuiButton-endIcon': {
-                      marginLeft: 0,
-                    },
-                  }}
-                >
-                  {filter}
-                </Button>
-              ))} */}
               <ListOptionSelect
                 id='filter-select-status'
                 label='Status'
                 value={filters.applicationStatus}
-                options={applicationStatuses}
+                options={APPLICATION_STATUSES}
                 onChange={handleFilterChange('applicationStatus')}
               />
               <ListOptionSelect
                 id='filter-select-schedule'
                 label='Schedule'
                 value={filters.jobType}
-                options={jobTypes}
+                options={JOB_TYPES}
                 onChange={handleFilterChange('jobType')}
               />
               <ListOptionSelect
                 id='filter-select-location'
                 label='Location'
                 value={filters.jobLocationType}
-                options={jobLocationTypes}
+                options={JOB_LOCATION_TYPES}
                 onChange={handleFilterChange('jobLocationType')}
               />
               <ListOptionSelect
                 id='filter-select-date-applied'
                 label='Date'
                 value={filters.dateApplied}
-                options={['30d', '90d', '1y', '2y', '5y']}
+                options={['1w', '1m', '3m', '6m', '1y']}
                 onChange={handleFilterChange('dateApplied')}
               />
             </Box>
@@ -364,7 +370,7 @@ const Applications: NextPageWithLayout = () => {
                   key={index}
                   {...(application && {
                     component: Link,
-                    href: `/applications/${application._id}`,
+                    href: `/applications/${application.id}`,
                   })}
                   sx={theme => ({
                     mb: 2,
@@ -461,63 +467,4 @@ const Applications: NextPageWithLayout = () => {
 
 Applications.Layout = PrivateLayout
 
-export const getServerSideProps: GetServerSideProps = async context => {
-  const session = await getServerSession(context.req, context.res)
-
-  if (!session) {
-    return {
-      redirect: {
-        destination: '/auth/signin',
-        permanent: false,
-      },
-    }
-  }
-
-  console.log(session)
-
-  // const queryClient = new QueryClient()
-
-  // await queryClient.prefetchQuery(['applications'], async () => {
-  //   return Application.find<PartialApplication>({ owner: '123123' }).lean()
-  // })
-
-  return {
-    props: {
-      // dehydratedState: dehydrate(queryClient),
-    },
-  }
-}
-
 export default Applications
-
-/* <ListItemText
-                    disableTypography
-                    primary={
-                      <Typography variant='body1' fontWeight={600}>
-                        {application.companyName}
-                      </Typography>
-                    }
-                    secondary={
-                      <>
-                        <Typography variant='body2' color='text.secondary' mb={1}>
-                          {application.jobTitle}
-                        </Typography>
-                        {[application.jobType, application.jobLocation, '$60K'].map(detail => (
-                          <Button
-                            key={detail}
-                            variant='outlined'
-                            size='small'
-                            sx={{
-                              mr: 1,
-                              textTransform: 'none',
-                            }}
-                          >
-                            {detail}
-                          </Button>
-                        ))}
-                      </>
-                    }
-                  />
-                  <Typography variant='caption' color='text.secondary' my={1.25}>
-                    {new Date(application.dateApplied).toLocaleDateString()}
-                  </Typography> */

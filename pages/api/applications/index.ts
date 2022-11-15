@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { FindOptions } from 'mongodb'
-import { JobApplication, jobTypes, jobLocationTypes, applicationStatuses } from '../../../types.d'
+import { JobApplication } from '../../../types'
+import { JOB_TYPES, JOB_LOCATION_TYPES, APPLICATION_STATUSES } from '../../../utils/constants'
 import getServerSession from '../../../utils/getServerSession'
-import { getApplications } from '../../../services/applications'
+import DbService from '../../../services/db'
 
-export type Data = Awaited<ReturnType<typeof getApplications>>
+export type Data = Awaited<ReturnType<typeof DbService['getProjectedApplications']>>
 
-export const sortByOptions: readonly (keyof Pick<
+export const sortByKeys: readonly (keyof Pick<
   JobApplication,
   'dateApplied' | 'companyName' | 'jobTitle' | 'applicationStatus'
 >)[] = ['dateApplied', 'companyName', 'jobTitle', 'applicationStatus'] as const
@@ -18,51 +18,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(401).end()
   }
 
-  console.log(req.query)
   const { user } = session
-  const { jobTitle, jobType, jobLocationType, applicationStatus, dateApplied, sortBy } = req.query
 
-  // Query filters
-  const filter: Parameters<typeof getApplications>[0] = { user_id: user.id }
-
-  // if (typeof jobTitle === 'string') {
-  //   filter.jobTitle = jobTitle
-  // }
-
-  if (jobTypes.some(v => v === jobType)) {
-    filter.jobType = jobType as typeof jobTypes[number]
+  const filter: Parameters<typeof DbService['getProjectedApplications']>[0] = {
+    userId: user.id,
+    jobType: JOB_TYPES.find(option => option === req.query.jobType),
+    jobLocationType: JOB_LOCATION_TYPES.find(option => option === req.query.jobLocationType),
+    applicationStatus: APPLICATION_STATUSES.find(option => option === req.query.applicationStatus),
   }
 
-  if (jobLocationTypes.some(v => v === jobLocationType)) {
-    filter.jobLocationType = jobLocationType as typeof jobLocationTypes[number]
+  const options: Parameters<typeof DbService['getProjectedApplications']>[1] = {
+    sortBy: sortByKeys.find(option => option === req.query.sortBy),
   }
 
-  if (applicationStatuses.some(v => v === applicationStatus)) {
-    filter.applicationStatus = applicationStatus as typeof applicationStatuses[number]
+  const date = new Date()
+  const now = date.getTime()
+
+  if (req.query.dateApplied === '1w') {
+    date.setDate(date.getDate() - 7)
+  } else if (req.query.dateApplied === '1m') {
+    date.setMonth(date.getMonth() - 1)
+  } else if (req.query.dateApplied === '3m') {
+    date.setMonth(date.getMonth() - 3)
+  } else if (req.query.dateApplied === '6m') {
+    date.setMonth(date.getMonth() - 6)
+  } else if (req.query.dateApplied === '1y') {
+    date.setFullYear(date.getFullYear() - 1)
   }
 
-  if (dateApplied && typeof dateApplied === 'string') {
-    if (dateApplied === '30d') {
-      filter.dateApplied = { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime() }
-    }
-
-    if (dateApplied === '90d') {
-      filter.dateApplied = { $gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).getTime() }
-    }
+  if (now !== date.getTime()) {
+    options.fromDate = date.getTime()
   }
 
-  // Query options (sorting)
-  const sortByKey = sortByOptions.find(v => v === sortBy) ?? 'dateApplied'
-
-  const options: FindOptions = {
-    sort: { [sortByKey]: 1 },
-  }
-
-  const applications = await getApplications(filter, options)
-
-  if (!applications) {
-    return res.status(404).end()
-  }
-
-  res.status(200).json(applications)
+  const data = await DbService.getProjectedApplications(filter, options)
+  res.status(200).json(data)
 }

@@ -1,6 +1,3 @@
-import type { DefaultUser } from 'next-auth'
-import { WithId } from 'mongodb'
-
 /* Environment variables */
 
 declare global {
@@ -16,6 +13,13 @@ declare global {
       TWITTER_CLIENT_ID: string
       TWITTER_CLIENT_SECRET: string
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: string
+      TWILIO_ACCOUNT_SID: string
+      TWILIO_AUTH_TOKEN: string
+      TWILIO_SERVICE_SID: string
+      TWILIO_PHONE_NUMBER: string
+      PUSHER_APP_ID: string
+      PUSHER_KEY: string
+      PUSHER_SECRET: string
     }
   }
 }
@@ -25,79 +29,54 @@ declare global {
 declare module 'next-auth' {
   interface Session {
     user?: DefaultUser & {
-      id: string
+      phoneNumber?: string
+      notifications: {
+        on: boolean
+        hourBefore: boolean
+        dayBefore: boolean
+        weekBefore: boolean
+      }
+    }
+  }
+
+  interface DefaultUser extends DefaultUser {
+    phoneNumber?: string
+    notifications: {
+      on: boolean
+      hourBefore: boolean
+      dayBefore: boolean
+      weekBefore: boolean
     }
   }
 }
 
-declare module 'next-auth/jwt/types' {
-  interface JWT {
-    uid: string
+/* App */
+
+export type UserNotification = {
+  id: string
+  title: string
+  message: string
+  seen: boolean
+  createdAt: number
+}
+
+// User Settings
+
+export type UserSettings = {
+  id: string
+  notifications: {
+    on: boolean
+    hourBefore: boolean
+    dayBefore: boolean
+    weekBefore: boolean
   }
 }
 
-/* Job Application */
-
-export const jobTypes = ['Full-time', 'Part-time', 'Temporary', 'Contract', 'Internship'] as const
-export type JobType = typeof jobTypes[number]
-
-export const jobLocationTypes = ['In-person', 'Remote', 'Hybrid'] as const
-export type JobLocationType = jobLocationTypes[number]
-
-export type Place = Pick<
-  google.maps.places.AutocompletePrediction,
-  'place_id' | 'description' | 'structured_formatting'
->
-
-const payTypes = ['min', 'max', 'exact', 'range'] as const
-export type PayType = typeof payTypes[number]
-
-export const payRates = ['hour', 'day', 'week', 'month', 'year'] as const
-export type PayRate = typeof payRates[number]
-
-export type JobPay = {
-  rate: PayRate
-} & (
-  | {
-      type: typeof payTypes[0 | 1 | 2]
-      amount1: number
-      amount2: undefined
-    }
-  | {
-      type: typeof payTypes[3]
-      amount1: number
-      amount2: number
-    }
-)
-
-export const applicationStatuses = [
-  'Applied',
-  'Interview',
-  'Interviewed',
-  'Rejected',
-  'Offer',
-] as const
-
-export type ApplicationStatusOptions = typeof applicationStatuses[number]
-
-export const submissionMethods = [
-  'Job Board',
-  'Agency',
-  'Company Website',
-  'Email',
-  'In-person',
-] as const
-
-export type SubmissionMethod = typeof submissionMethods[number]
-
-export type Person = {
-  position: string
-  name: string
-  email: string | null
-  phoneNumber: string | null
-}
+// Job Application
 
 export type JobApplication = {
+  id: string
+  userId: string
   companyName: string
   jobTitle: string
   jobLocationType: JobLocationType
@@ -108,11 +87,44 @@ export type JobApplication = {
   jobBoard: string
   submissionMethod: SubmissionMethod
   applicationLink: string | null
-  applicationStatus: ApplicationStatusOptions
+  applicationStatus: ApplicationStatuses
   interviewDate: number | null
   notablePeople: Person[]
 }
 
-export type JobApplicationResponse = JobApplication & {
-  user_id: string
+export type Place = Pick<
+  google.maps.places.AutocompletePrediction,
+  'place_id' | 'description' | 'structured_formatting'
+>
+
+export type Person = {
+  position: string
+  name: string
+  email: string | null
+  phoneNumber: string | null
 }
+
+export type JobType = typeof import('./utils/constants').JOB_TYPES[number]
+
+export type JobLocationType = typeof import('./utils/constants').JOB_LOCATION_TYPES[number]
+
+export type PayType = typeof import('./utils/constants').PAY_TYPES[number]
+
+export type PayRate = typeof import('./utils/constants').PAY_RATES[number]
+
+export type JobPay =
+  | {
+      rate: PayRate
+      type: typeof import('./utils/constants').PAY_TYPES[0 | 1 | 2]
+      amount1: number
+    }
+  | {
+      rate: PayRate
+      type: typeof import('./utils/constants').PAY_TYPES[3]
+      amount1: number
+      amount2: number
+    }
+
+export type ApplicationStatuses = typeof import('./utils/constants').APPLICATION_STATUSES[number]
+
+export type SubmissionMethod = typeof import('./utils/constants').SUBMISSION_METHODS[number]

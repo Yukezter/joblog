@@ -1,14 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { JobApplicationResponse } from '../../../types'
+import { JobApplication } from '../../../types'
 import getServerSession from '../../../utils/getServerSession'
-import { getApplication } from '../../../services/applications'
+import DbService from '../../../services/db'
 
-export type Data = JobApplicationResponse
+export type Data = JobApplication
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<JobApplicationResponse>
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse<JobApplication>) {
   const session = await getServerSession(req, res)
 
   if (!session || !session.user) {
@@ -22,11 +19,11 @@ export default async function handler(
     return res.status(404).end()
   }
 
-  const application = await getApplication({ _id: id, user_id: user.id })
+  const data = await DbService.getApplication({ id, userId: user.id })
 
-  if (!application) {
+  if (!data) {
     return res.status(404).end()
   }
 
-  res.status(200).json(application)
+  res.status(200).json(data)
 }

@@ -1,11 +1,11 @@
 import Box, { BoxProps } from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { ApplicationStatusOptions } from '../types'
+import type { JobApplication } from '../types'
 
-type StatusProps = BoxProps & { status: ApplicationStatusOptions }
+type StatusProps = BoxProps & { status: JobApplication['applicationStatus'] }
 
 const ApplicationStatus = ({ status, ...props }: StatusProps) => {
-  const statusColors: { [key in ApplicationStatusOptions]: string } = {
+  const statusColors: { [key in JobApplication['applicationStatus']]: string } = {
     Applied: '#e0e1dd',
     Interview: '#6e4bb9',
     Interviewed: '#4b64b9',

@@ -1,19 +1,21 @@
-import { AxiosResponse } from 'axios'
+// import { AxiosResponse } from 'axios'
 import { useQueryClient, useMutation, UseMutationOptions } from '@tanstack/react-query'
 import httpAPI from '../utils/httpAPI'
-import { Data } from '../pages/api/applications/create'
+import { Body, Data } from '../pages/api/applications/create'
 
-const useCreateApplication = (
-  options: UseMutationOptions<AxiosResponse<void>, unknown, Data> = {}
-) => {
+const useCreateApplication = (options: UseMutationOptions<Data, unknown, Body> = {}) => {
   const queryClient = useQueryClient()
 
-  return useMutation<AxiosResponse<void>, unknown, Data>(
+  return useMutation<Data, unknown, Body>(
     ['applications', 'create'],
-    async data => httpAPI.post<void>('/applications/create', data),
+    async data => {
+      const response = await httpAPI.post('/applications/create', data)
+      return response.data
+    },
     {
       ...options,
-      async onSuccess() {
+      async onSuccess(data) {
+        queryClient.setQueryData(['applications', data._id], data)
         await queryClient.resetQueries(['applications'], { exact: true })
       },
     }

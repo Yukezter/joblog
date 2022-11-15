@@ -1,50 +1,52 @@
 import React from 'react'
-import { GetServerSideProps } from 'next'
+// import { GetServerSideProps } from 'next'
+import Router from 'next/router'
 import ArrowBackIosSharpIcon from '@mui/icons-material/ArrowBackIosSharp'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import type { NextPageWithLayout } from '../_app'
-import getServerSession from '../../utils/getServerSession'
-import {
-  getApplications,
-  getAutcompleteOptions,
-  AutocompleteOptions,
-} from '../../services/applications'
+// import getServerSession from '../../utils/getServerSession'
+// import { getApplications } from '../../services/applications'
 import PrivateLayout from '../../layouts/PrivateLayout'
 import Link from '../../components/Link'
 import ApplicationForm, { ApplicationFormProps } from '../../components/ApplicationForm'
 import useCreateApplication from '../../hooks/useCreateApplication'
+// import Redirect from '../../components/Redirect'
 
-export const getServerSideProps: GetServerSideProps = async context => {
-  const session = await getServerSession(context.req, context.res)
+// export const getServerSideProps: GetServerSideProps = async context => {
+//   const session = await getServerSession(context.req, context.res)
 
-  if (!session || !session.user) {
-    return {
-      redirect: {
-        destination: '/auth/signin',
-        permanent: false,
-      },
+//   if (!session || !session.user) {
+//     return {
+//       redirect: {
+//         destination: '/auth/signin',
+//         permanent: false,
+//       },
+//     }
+//   }
+
+//   const { user } = session
+//   const autocompleteOptions = await getAutcompleteOptions({ user_id: user.id })
+
+//   return {
+//     props: {
+//       autocompleteOptions,
+//     },
+//   }
+// }
+
+// type CreateProps = {
+//   autocompleteOptions: AutocompleteOptions
+// }
+
+const Create: NextPageWithLayout = () => {
+  const { mutate, status, data } = useCreateApplication()
+
+  const redirectTo = React.useMemo(() => {
+    if (status === 'success') {
+      return `/applications/${data.id}`
     }
-  }
-
-  const { user } = session
-  const autocompleteOptions = await getAutcompleteOptions({ user_id: user.id })
-
-  console.log(autocompleteOptions)
-
-  return {
-    props: {
-      autocompleteOptions,
-    },
-  }
-}
-
-type CreateProps = {
-  autocompleteOptions: AutocompleteOptions
-}
-
-const Create: NextPageWithLayout<CreateProps> = ({ autocompleteOptions }) => {
-  const { mutate, status } = useCreateApplication()
+  }, [status, data])
 
   const onSubmit: ApplicationFormProps['onSubmit'] = data => {
     mutate(data)
@@ -68,9 +70,9 @@ const Create: NextPageWithLayout<CreateProps> = ({ autocompleteOptions }) => {
         Add a job application
       </Typography>
       <ApplicationForm
-        autocompleteOptions={autocompleteOptions}
         onSubmit={onSubmit}
-        redirect={status === 'success'}
+        isLoading={['loading', 'success'].includes(status)}
+        redirectTo={redirectTo}
       />
     </div>
   )

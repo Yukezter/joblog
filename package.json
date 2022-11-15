@@ -26,9 +26,11 @@
     "next": "12.3.1",
     "next-auth": "^4.12.3",
     "nodemailer": "^6.8.0",
+    "pusher": "^5.1.1-beta",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-hook-form": "^7.37.0"
+    "react-hook-form": "^7.37.0",
+    "twilio": "^3.83.1"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
