@@ -18,7 +18,7 @@ declare global {
       TWILIO_SERVICE_SID: string
       TWILIO_PHONE_NUMBER: string
       PUSHER_APP_ID: string
-      PUSHER_KEY: string
+      NEXT_PUBLIC_PUSHER_KEY: string
       PUSHER_SECRET: string
     }
   }

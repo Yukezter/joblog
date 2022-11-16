@@ -1,6 +1,7 @@
 import React from 'react'
 // import { useRouter } from 'next/router'
 import { signOut } from 'next-auth/react'
+import Pusher from 'pusher-js'
 import { useMutation } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import Box from '@mui/material/Box'
@@ -43,6 +44,21 @@ import Link from '../components/Link'
 const NotificationsPopper = () => {
   const [open, setOpen] = React.useState(false)
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
+
+  React.useEffect(() => {
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+      userAuthentication: {
+        endpoint: '/auth/socket',
+        transport: 'ajax',
+      },
+    })
+
+    pusher.signin()
+
+    pusher.user.bind('notification', (context: any) => {
+      console.log(context)
+    })
+  }, [])
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)

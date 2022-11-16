@@ -1,15 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import Pusher from 'pusher'
 import DbService from '../../../services/db'
 import PhoneService from '../../../services/phone'
-
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID,
-  key: process.env.PUSHER_KEY,
-  secret: process.env.PUSHER_SECRET,
-  cluster: 'us3',
-  // useTLS: true,
-})
+import SocketService from '../../../services/socket'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -59,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
               await DbService.createNotification(notification)
 
-              pusher.trigger('notifications', 'reminder', notification)
+              SocketService.sendNotificationToUser(user.id, notification)
 
               PhoneService.sendTextMessage(
                 user.phoneNumber!,

@@ -27,6 +27,7 @@
     "next-auth": "^4.12.3",
     "nodemailer": "^6.8.0",
     "pusher": "^5.1.1-beta",
+    "pusher-js": "^7.5.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.37.0",
