@@ -59,8 +59,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
               await DbService.createNotification(notification)
 
-              pusher.trigger('notifications', 'reminder', notification)
-
               PhoneService.sendTextMessage(
                 user.phoneNumber!,
                 `Hi there! Just a friendly reminder that you have an interview in 1 ${timeBefore} with ${application.companyName}.`
