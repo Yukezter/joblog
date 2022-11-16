@@ -15,7 +15,7 @@ const useCreateApplication = (options: UseMutationOptions<Data, unknown, Body> =
     {
       ...options,
       async onSuccess(data) {
-        queryClient.setQueryData(['applications', data._id], data)
+        queryClient.setQueryData(['applications', data.id], data)
         await queryClient.resetQueries(['applications'], { exact: true })
       },
     }
