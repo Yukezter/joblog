@@ -1,27 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import Pusher from 'pusher'
-import DbService from '../../../services/db'
-import PhoneService from '../../../services/phone'
+import DbService from '../services/db'
+import PhoneService from '../services/phone'
+import events from '../events'
 
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID,
-  key: process.env.PUSHER_KEY,
-  secret: process.env.PUSHER_SECRET,
-  cluster: 'us3',
-  // useTLS: true,
-})
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+const sendNotifications = async () => {
   try {
-    // console.log(req.headers)
-    // const res = await axios.get('https://oauth2.googleapis.com/tokeninfo', {
-    //   params: {
-    //     id_token: req.headers.authorization?.split(' ')[1],
-    //   },
-    // })
-
-    // console.log(res.data)
-
     const users = await DbService.getUsersWithNotificationsOn()
 
     if (users.length) {
@@ -38,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const user = users.find(({ id }) => id === application.userId)
 
         if (user) {
-          const sendReminder = async (timeBefore: 'week' | 'day' | 'hour') => {
+          const checkReminderTime = async (timeBefore: 'week' | 'day' | 'hour') => {
             let date = new Date(application.interviewDate!)
             if (timeBefore === 'week') {
               date.setDate(date.getDate() - 7)
@@ -59,6 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
               await DbService.createNotification(notification)
 
+              events.notifications.emit(user.id, notification)
+
               PhoneService.sendTextMessage(
                 user.phoneNumber!,
                 `Hi there! Just a friendly reminder that you have an interview in 1 ${timeBefore} with ${application.companyName}.`
@@ -69,22 +53,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           if (user.notifications.weekBefore) {
-            sendReminder('week')
-          }
-
-          if (user.notifications.dayBefore) {
-            sendReminder('day')
-          }
-
-          if (user.notifications.hourBefore) {
-            sendReminder('hour')
+            checkReminderTime('week')
+          } else if (user.notifications.dayBefore) {
+            checkReminderTime('day')
+          } else if (user.notifications.hourBefore) {
+            checkReminderTime('hour')
           }
         }
       })
     }
-
-    res.status(200).end()
   } catch (err) {
-    res.status(500)
+    console.log(err)
   }
 }
+
+const notificationsWorker = {
+  run: () => {
+    sendNotifications()
+  },
+}
+
+export default notificationsWorker
