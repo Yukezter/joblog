@@ -7,16 +7,14 @@ const useCreateApplication = (options: UseMutationOptions<Data, unknown, Body> =
   const queryClient = useQueryClient()
 
   return useMutation<Data, unknown, Body>(
-    ['applications', 'create'],
     async data => {
       const response = await httpAPI.post('/applications/create', data)
       return response.data
     },
     {
       ...options,
-      async onSuccess(data) {
-        queryClient.setQueryData(['applications', data.id], data)
-        await queryClient.resetQueries(['applications'], { exact: true })
+      async onSuccess() {
+        await queryClient.refetchQueries(['applications'])
       },
     }
   )

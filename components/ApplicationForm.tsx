@@ -32,6 +32,8 @@ import Link from '../components/Link'
 import CreatableAutocomplete from './CreatableAutocomplete'
 import PlacesAutocomplete from './PlacesAutocomplete'
 import NotablePerson from '../components/NotablePerson'
+// import SelectReminders from './SelectReminders'
+import SelectCheckox from './SelectReminders'
 
 const Accordion = styled((props: AccordionProps) => (
   <MuiAccordion disableGutters elevation={0} square {...props} />
@@ -101,6 +103,14 @@ const PersonForm = (props: PersonFormProps) => {
       <DialogTitle variant='h4'>{selectedPerson ? 'Edit Person' : 'Add Person'}</DialogTitle>
       <DialogContent>
         <Stack display='block' mt={1} spacing={2}>
+          <TextField
+            id='name'
+            label='Name *'
+            placeholder='Full Name'
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            InputProps={{ ...register('name', { required: true }) }}
+          />
           <Controller
             name='position'
             control={control}
@@ -116,14 +126,6 @@ const PersonForm = (props: PersonFormProps) => {
                 }}
               />
             )}
-          />
-          <TextField
-            id='name'
-            label='Name *'
-            placeholder='Full Name'
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-            InputProps={{ ...register('name', { required: true }) }}
           />
           <TextField
             id='email'
@@ -181,7 +183,7 @@ const ApplicationForm = (props: ApplicationFormProps) => {
 
   React.useEffect(() => {
     if (props.redirectTo) {
-      Router.push(props.redirectTo)
+      Router.replace(props.redirectTo)
     }
   }, [props.redirectTo])
 
@@ -190,8 +192,9 @@ const ApplicationForm = (props: ApplicationFormProps) => {
     handleSubmit,
     control,
     watch,
+    reset,
     resetField,
-    formState: { errors },
+    formState,
   } = useForm<JobApplication>({
     defaultValues: {
       companyName: '',
@@ -210,10 +213,17 @@ const ApplicationForm = (props: ApplicationFormProps) => {
       applicationLink: null,
       applicationStatus: 'Applied',
       interviewDate: null,
+      interviewReminders: [],
       notablePeople: [],
       ...props?.defaultValues,
     },
   })
+  
+  React.useEffect(() => {
+    if (props.defaultValues) {
+      reset(props.defaultValues)
+    }
+  }, [props.defaultValues?.id])
 
   const { fields, append, update, remove } = useFieldArray({
     control,
@@ -645,6 +655,19 @@ const ApplicationForm = (props: ApplicationFormProps) => {
                           )}
                         />
                       </LocalizationProvider>
+                    )}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                <Controller
+                    name='interviewReminders'
+                    control={control}
+                    render={({ field }) => (
+                      <SelectCheckox
+                        disabled={applicationStatus !== 'Interview'}
+                        defaultValue={formState.defaultValues?.interviewReminders as number[]}
+                        onChange={field.onChange}
+                      />
                     )}
                   />
                 </Grid>

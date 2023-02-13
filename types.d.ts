@@ -28,26 +28,10 @@ declare global {
 
 declare module 'next-auth' {
   interface Session {
-    user?: DefaultUser & {
-      phoneNumber?: string
-      notifications: {
-        on: boolean
-        hourBefore: boolean
-        dayBefore: boolean
-        weekBefore: boolean
-      }
-    }
+    user?: DefaultUser
   }
 
-  interface DefaultUser extends DefaultUser {
-    phoneNumber?: string
-    notifications: {
-      on: boolean
-      hourBefore: boolean
-      dayBefore: boolean
-      weekBefore: boolean
-    }
-  }
+  interface DefaultUser extends DefaultUser {}
 }
 
 /* App */
@@ -64,12 +48,8 @@ export type UserNotification = {
 
 export type UserSettings = {
   id: string
-  notifications: {
-    on: boolean
-    hourBefore: boolean
-    dayBefore: boolean
-    weekBefore: boolean
-  }
+  phoneNumber: string | null
+  textRemindersDisabled: boolean
 }
 
 // Job Application
@@ -89,6 +69,7 @@ export type JobApplication = {
   applicationLink: string | null
   applicationStatus: ApplicationStatuses
   interviewDate: number | null
+  interviewReminders: number[]
   notablePeople: Person[]
 }
 

@@ -4,7 +4,7 @@ import { Data } from '../pages/api/applications/[id]'
 
 const useApplication = (id?: string) => {
   return useQuery(
-    ['applications', id],
+    ['application', id],
     async () => {
       const res = await httpAPI.get<Data>(`/applications/${id}`)
       return res.data

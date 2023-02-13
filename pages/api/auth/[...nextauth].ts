@@ -46,18 +46,18 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/signin',
   },
   callbacks: {
-    signIn({ user }) {
-      if (!user.notifications) {
-        user.notifications = {
-          on: false,
-          hourBefore: false,
-          dayBefore: false,
-          weekBefore: false,
-        }
-      }
+    // signIn({ user }) {
+    //   if (!user.notifications) {
+    //     user.notifications = {
+    //       on: false,
+    //       hourBefore: false,
+    //       dayBefore: false,
+    //       weekBefore: false,
+    //     }
+    //   }
 
-      return true
-    },
+    //   return true
+    // },
     session: ({ session, user }) => {
       if (session.user) {
         session.user = user

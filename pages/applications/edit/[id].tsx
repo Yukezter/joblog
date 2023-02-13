@@ -2,6 +2,7 @@ import React from 'react'
 // import { GetServerSideProps } from 'next'
 import { useRouter } from 'next/router'
 import ArrowBackIosSharpIcon from '@mui/icons-material/ArrowBackIosSharp'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Spinner from '@mui/material/CircularProgress'
@@ -63,7 +64,7 @@ import ApplicationForm, { ApplicationFormProps } from '../../../components/Appli
 const Edit: NextPageWithLayout = () => {
   const router = useRouter()
   const { id } = router.query
-  const { data } = useApplication(id as string)
+  const { data} = useApplication(id as string)
   const { mutate, status } = useEditApplication()
 
   const onSubmit: ApplicationFormProps['onSubmit'] = data => {
@@ -74,13 +75,13 @@ const Edit: NextPageWithLayout = () => {
     if (status === 'success') {
       return `/applications/${id}`
     }
-  }, [status, id])
+  }, [status, id])  
 
   return (
     <div>
       <Button
         component={Link}
-        href='/applications'
+        href={`/applications/${id}`}
         variant='text'
         startIcon={<ArrowBackIosSharpIcon />}
         sx={{ textTransform: 'none', mb: 2 }}
@@ -90,16 +91,12 @@ const Edit: NextPageWithLayout = () => {
       <Typography variant='h4' mb={1}>
         Edit
       </Typography>
-      {!data ? (
-        <Spinner />
-      ) : (
-        <ApplicationForm
+      <ApplicationForm
           onSubmit={onSubmit}
-          defaultValues={data!}
+          defaultValues={data}
           isLoading={['loading', 'success'].includes(status)}
           redirectTo={redirectTo}
         />
-      )}
     </div>
   )
 }

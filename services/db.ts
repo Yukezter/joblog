@@ -22,33 +22,14 @@ const projectWithout_IdStage = {
 }
 
 export default class DbService {
-  static async getDB(dbName = 'joblog') {
+  static async client(dbName = 'joblog') {
     const client = await clientPromise
     return client.db(dbName)
   }
 
-  static async getUsersWithNotificationsOn() {
-    const db = await this.getDB()
-    const users = db.collection<User>('users')
-    const result = await users
-      .aggregate<User>([
-        {
-          $match: {
-            phoneNumber: { $exists: true },
-            'notifications.on': true,
-            $or: [
-              { 'notifications.hourBefore': true },
-              { 'notifications.dayBefore': true },
-              { 'notifications.weekBefore': true },
-            ],
-          },
-        },
-        addIdFieldStage,
-        projectWithout_IdStage,
-      ])
-      .toArray()
-
-    return result
+  static async getDB(dbName = 'joblog') {
+    const client = await clientPromise
+    return client.db(dbName)
   }
 
   static async updateUser(id: string, data: Partial<User>) {
@@ -59,16 +40,20 @@ export default class DbService {
 
   static async deletePhoneNumber(id: string) {
     const db = await this.getDB()
-    const users = db.collection<User>('users')
-    await users.updateOne({ _id: new ObjectId(id) }, { $unset: { phoneNumber: '' } })
+    const users = db.collection<UserSettings>('settings')
+    await users.updateOne({ _id: new ObjectId(id) }, { $set: { phoneNumber: null } })
   }
 
   static async getUserSettings(id: string) {
     const db = await this.getDB()
-    const settings = db.collection<UserSettings>('user_settings')
+    const settings = db.collection<UserSettings>('settings')
     const result = await settings
       .aggregate<UserSettings>([
-        { $match: { _id: new ObjectId(id) } },
+        { 
+          $match: {
+            _id: Array.isArray(id) ? { $in: id } : new ObjectId(id)
+          }
+        },
         addIdFieldStage,
         projectWithout_IdStage,
       ])
@@ -77,22 +62,43 @@ export default class DbService {
     return result.length ? result[0] : null
   }
 
-  static async updateUserSettings(id: string, data: Partial<UserSettings>) {
+  static async getManyUserSettings(ids: string[]) {
     const db = await this.getDB()
-    const users = db.collection<UserSettings>('users')
-    const result = await users.findOneAndUpdate({ _id: new ObjectId(id) }, [
-      { $set: data },
-      addIdFieldStage,
-      projectWithout_IdStage,
-    ])
+    const settings = db.collection<UserSettings>('settings')
+    const result = await settings
+      .aggregate<UserSettings>([
+        { 
+          $match: {
+            _id: { $in: ids }
+          }
+        },
+        addIdFieldStage,
+        projectWithout_IdStage,
+      ])
+      .toArray()
 
-    return result.value as UserSettings
+    return result
   }
 
-  static async createNotification(data: Omit<UserNotification, 'id'>) {
+  static async updateUserSettings(id: string, data: Partial<UserSettings>) {
     const db = await this.getDB()
-    const notifications = db.collection<typeof data>('notifications')
-    await notifications.insertOne(data)
+    const users = db.collection<UserSettings>('settings')
+    await users.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: data }
+    )
+  }
+
+  static async createNotification(userId: string, data: Omit<UserNotification, 'id'>) {
+    const db = await this.getDB()
+    const notifications = db.collection<typeof data & { userId: string }>('notifications')
+    await notifications.insertOne({ userId, ...data })
+  }
+
+  static async getNotifications(id: string) {
+    const db = await this.getDB()
+    const notifications = db.collection<UserNotification>('notifications')
+    return notifications.find({ userId: id }).toArray()
   }
 
   static async getApplication({ id, userId }: Partial<JobApplication>) {
@@ -189,14 +195,13 @@ export default class DbService {
     return result
   }
 
-  static async getApplicationsWithFutureInterviewsByUserIds(userIds: string[], now: number) {
+  static async getApplicationsWithInterviews(now: number) {
     const db = await this.getDB()
     const applications = db.collection<JobApplication>('applications')
     const result = await applications
       .aggregate<JobApplication>([
         {
           $match: {
-            userId: { $in: userIds },
             interviewDate: { $ne: null, $gt: now },
           },
         },
@@ -239,14 +244,9 @@ export default class DbService {
 
   static async createApplication(data: Omit<JobApplication, 'id'>) {
     const db = await this.getDB()
-    const applications = db.collection<JobApplication>('applications')
-    const result = await applications.findOneAndUpdate(
-      { _id: new ObjectId() },
-      [{ $setOnInsert: data }, addIdFieldStage, projectWithout_IdStage],
-      { upsert: true, returnDocument: 'after' }
-    )
-
-    return result.value as JobApplication
+    const applications = db.collection<Omit<JobApplication, 'id'>>('applications')
+    const result = await applications.insertOne(data)
+    return result.insertedId.toString()
   }
 
   static async editApplication(

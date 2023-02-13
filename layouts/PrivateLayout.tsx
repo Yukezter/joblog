@@ -2,7 +2,7 @@ import React from 'react'
 // import { useRouter } from 'next/router'
 import { signOut } from 'next-auth/react'
 import Pusher from 'pusher-js'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
@@ -11,6 +11,8 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Popper from '@mui/material/Popper'
 import Fade from '@mui/material/Fade'
+import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import MenuList from '@mui/material/MenuList'
 import MenuItem from '@mui/material/MenuItem'
 // import ListItemIcon from '@mui/material/ListItemIcon'
@@ -33,17 +35,22 @@ import NotificationsIcon from '@mui/icons-material/Notifications'
 import CloseIcon from '@mui/icons-material/Close'
 // import LogoutIcon from '@mui/icons-material/Logout'
 import AccountIcon from '@mui/icons-material/AccountBox'
-import type { UserSettings } from '../types'
+import type { UserNotification, UserSettings } from '../types'
 import httpAPI from '../utils/httpAPI'
 import { AuthProvider, useAuth } from '../context/AuthContext'
+import useSettings from '../hooks/useSettings' 
 import Navbar from '../components/Navbar'
 import NavbarBrand from '../components/NavbarBrand'
 import Link from '../components/Link'
-// import Redirect from '../components/Redirect'
 
 const NotificationsPopper = () => {
   const [open, setOpen] = React.useState(false)
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
+  const queryClient = useQueryClient()
+  const notifications = useQuery(['notifications'], async () => {
+    const { data } = await httpAPI.get<UserNotification[]>('/users/notifications')
+    return data
+  })
 
   React.useEffect(() => {
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
@@ -55,8 +62,10 @@ const NotificationsPopper = () => {
 
     pusher.signin()
 
-    pusher.user.bind('notification', (context: any) => {
+    pusher.user.bind('notification', (context: UserNotification) => {
       console.log(context)
+      queryClient.setQueryData(['notifications'], context)
+      queryClient.refetchQueries(['notifications'])
     })
   }, [])
 
@@ -93,7 +102,16 @@ const NotificationsPopper = () => {
           <Fade {...TransitionProps} timeout={350}>
             <Paper sx={{ p: 1 }}>
               <ClickAwayListener onClickAway={handleClose}>
-                <div>Notifications coming soon!</div>
+                <List>
+                  {notifications.data?.map(notification => (
+                    <ListItem>
+                      <ListItemText
+                        primary={notification.title}
+                        secondary={notification.message}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
               </ClickAwayListener>
             </Paper>
           </Fade>
@@ -151,18 +169,12 @@ const AccountPopper = ({ openSettings }: AccountPopperProps) => {
               <ClickAwayListener onClickAway={handleClose}>
                 <MenuList>
                   <MenuItem onClick={handleClickSettings}>
-                    {/* <ListItemIcon>
-                      <SettingsIcon fontSize='small' />
-                    </ListItemIcon> */}
                     <ListItemText disableTypography>
                       <Typography variant='body2'>Settings</Typography>
                     </ListItemText>
                   </MenuItem>
                   <Divider />
                   <MenuItem onClick={() => signOut()}>
-                    {/* <ListItemIcon>
-                      <LogoutIcon fontSize='small' />
-                    </ListItemIcon> */}
                     <ListItemText disableTypography>
                       <Typography variant='body2' color='error.dark'>
                         Logout
@@ -193,11 +205,11 @@ const Footer = () => (
 )
 
 type PhoneVerificationProps = {
-  auth: ReturnType<typeof useAuth>
+  settings: ReturnType<typeof useSettings>
   cancel: () => void
 }
 
-const PhoneVerification = ({ auth, cancel }: PhoneVerificationProps) => {
+const PhoneVerification = ({ settings, cancel }: PhoneVerificationProps) => {
   const form = useForm({
     defaultValues: {
       to: '',
@@ -220,19 +232,21 @@ const PhoneVerification = ({ auth, cancel }: PhoneVerificationProps) => {
     }
   )
 
+  const queryClient = useQueryClient()
+
   const verifyCode = useMutation(
     ({ to, code }: { to: string; code: string }) => {
       return httpAPI.post('/verify/phone/check', { to, code })
     },
     {
       onSuccess() {
-        auth.refresh()
+        queryClient.refetchQueries(['settings'])
       },
     }
   )
 
   const handleClickSendCode = form.handleSubmit(({ to }) => {
-    if (auth.user?.phoneNumber === to) {
+    if (settings.data?.phoneNumber === to) {
       return
     }
 
@@ -329,38 +343,28 @@ const a11yProps = (index: number) => {
   }
 }
 
+type FormSettings = Omit<UserSettings, 'phoneNumber'>
+
 const NotificationsSettings = () => {
   const auth = useAuth()
-
-  const updateSettings = useMutation(
-    (data: Omit<UserSettings, 'id'>) => {
-      return httpAPI.post('/users/settings/update', data)
-    },
+  const settings = useSettings(auth.user?.id)
+  const queryClient = useQueryClient()
+  const updateSettings = useMutation<void, unknown, FormSettings>(
+    data => httpAPI.post('/users/settings/update', data),
     {
       onSuccess() {
-        auth.refresh()
+        queryClient.refetchQueries(['settings'])
       },
     }
   )
 
-  const form = useForm({
-    defaultValues: {
-      notifications: {
-        on: false,
-        hourBefore: false,
-        dayBefore: false,
-        weekBefore: false,
-        ...auth.user?.notifications,
-      },
-    },
-  })
+  const form = useForm<FormSettings>()
 
-  // React.useEffect(() => {
-  //   if (user?.notifications) {
-  //     console.log(user?.notifications)
-  //     form.reset({ notifications: auth.user.notifications })
-  //   }
-  // }, [form, user?.notifications])
+  React.useEffect(() => {
+    if (settings.data && settings.isFetchedAfterMount) {
+      form.reset(settings.data)
+    }
+  }, [settings.data, settings.isFetchedAfterMount])
 
   const handleSubmit = form.handleSubmit(data => {
     updateSettings.mutate(data)
@@ -370,17 +374,17 @@ const NotificationsSettings = () => {
 
   React.useEffect(() => {
     setIsChangingPhoneNumber(false)
-  }, [auth.user?.phoneNumber])
+  }, [settings.data?.phoneNumber])
 
   const removePhoneNumber = useMutation(() => httpAPI.post('/users/phone/delete'), {
-    async onSuccess() {
-      auth.refresh()
+    onSuccess() {
+      queryClient.refetchQueries(['settings'])
     },
   })
 
-  const showPhoneVerification = !auth.user?.phoneNumber || isChangingPhoneNumber
+  const showPhoneVerification = !settings.data?.phoneNumber || isChangingPhoneNumber
   const isRemovingPhoneNumber = removePhoneNumber.isLoading || removePhoneNumber.isSuccess
-  const isDoneRemovingPhoneNumber = removePhoneNumber.isSuccess && !auth.user?.phoneNumber
+  const isDoneRemovingPhoneNumber = removePhoneNumber.isSuccess && !settings.data?.phoneNumber
 
   const handleCancel = () => {
     setIsChangingPhoneNumber(false)
@@ -398,10 +402,10 @@ const NotificationsSettings = () => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <Typography variant='h5' mb={5}>
-        Text Notifications
+      <Typography variant='h5' mb={2}>
+        Notifications
       </Typography>
-      <Collapse in={!auth.user?.phoneNumber}>
+      <Collapse in={!settings.data?.phoneNumber}>
         <Box pb={2}>
           <Alert severity='info'>
             A verified phone number is required to receive text notifications.
@@ -411,12 +415,12 @@ const NotificationsSettings = () => {
       <Typography fontWeight={600} display='block' mb={1}>
         {isChangingPhoneNumber ? 'Verify your phone number' : 'Phone number'}
       </Typography>
-      <Grid container columnSpacing={{ sm: 1 }} rowSpacing={4}>
-        {showPhoneVerification ? (
-          <PhoneVerification auth={auth} cancel={handleCancel} />
+      <Grid container mb={1} rowSpacing={2}>
+      {showPhoneVerification ? (
+          <PhoneVerification settings={settings} cancel={handleCancel} />
         ) : (
           <Grid xs={12} display='flex' alignItems='center'>
-            <Typography mr={2}>{auth.user?.phoneNumber}</Typography>
+            <Typography mr={2}>{settings.data?.phoneNumber}</Typography>
             <Button
               variant='text'
               sx={{ minWidth: 80, height: '100%' }}
@@ -436,85 +440,27 @@ const NotificationsSettings = () => {
             </Button>
           </Grid>
         )}
-        <Grid xs={12}>
-          <Typography fontWeight={600} mb={1}>
-            Turn text notifications on/off
-          </Typography>
-          <FormGroup sx={{ mb: 1 }}>
-            <FormControlLabel
-              disabled={!auth.user?.phoneNumber}
-              control={
-                <Controller
-                  name='notifications.on'
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      onChange={e => field.onChange(e.target.checked)}
-                    />
-                  )}
-                />
-              }
-              label='On'
-            />
-          </FormGroup>
-          <Typography mb={1}>Interview date reminders</Typography>
-          <FormGroup>
-            <FormControlLabel
-              disabled={!auth.user?.phoneNumber}
-              control={
-                <Controller
-                  name='notifications.weekBefore'
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      onChange={e => field.onChange(e.target.checked)}
-                    />
-                  )}
-                />
-              }
-              label='1 week before'
-            />
-            <FormControlLabel
-              disabled={!auth.user?.phoneNumber}
-              control={
-                <Controller
-                  name='notifications.dayBefore'
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      onChange={e => field.onChange(e.target.checked)}
-                    />
-                  )}
-                />
-              }
-              label='1 day before'
-            />
-            <FormControlLabel
-              disabled={!auth.user?.phoneNumber}
-              control={
-                <Controller
-                  name='notifications.hourBefore'
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      onChange={e => field.onChange(e.target.checked)}
-                    />
-                  )}
-                />
-              }
-              label='1 hour before'
-            />
-          </FormGroup>
-        </Grid>
       </Grid>
+          <FormGroup sx={{ mb: 4 }}>
+            <FormControlLabel
+              disabled={!settings.data?.phoneNumber}
+              control={
+                <Controller
+                  name='textRemindersDisabled'
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      {...field}
+                      disabled={!settings.data?.phoneNumber}
+                      checked={field.value}
+                      onChange={e => field.onChange(e.target.checked)}
+                    />
+                  )}
+                />
+              }
+              label='Disable Text Reminders'
+            />
+          </FormGroup>
       <Box mt='auto'>
         <Button type='submit' variant='contained' size='large' sx={{ mr: 1 }}>
           Save
@@ -627,3 +573,56 @@ const PrivateLayout = ({ children }: PrivateLayoutProps) => {
 }
 
 export default PrivateLayout
+/* <FormGroup>
+            <FormControlLabel
+              disabled={!settings.data?.phoneNumber}
+              control={
+                <Controller
+                  name='notifications.weekBefore'
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      {...field}
+                      checked={field.value}
+                      onChange={e => field.onChange(e.target.checked)}
+                    />
+                  )}
+                />
+              }
+              label='1 week before'
+            />
+            <FormControlLabel
+              disabled={!settings.data?.phoneNumber}
+              control={
+                <Controller
+                  name='notifications.dayBefore'
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      {...field}
+                      checked={field.value}
+                      onChange={e => field.onChange(e.target.checked)}
+                    />
+                  )}
+                />
+              }
+              label='1 day before'
+            />
+            <FormControlLabel
+              disabled={!settings.data?.phoneNumber}
+              control={
+                <Controller
+                  name='notifications.hourBefore'
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      {...field}
+                      checked={field.value}
+                      onChange={e => field.onChange(e.target.checked)}
+                    />
+                  )}
+                />
+              }
+              label='1 hour before'
+            />
+          </FormGroup> */

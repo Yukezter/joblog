@@ -44,7 +44,7 @@ const Create: NextPageWithLayout = () => {
 
   const redirectTo = React.useMemo(() => {
     if (status === 'success') {
-      return `/applications/${data.id}`
+      return `/applications/${data}`
     }
   }, [status, data])
 
@@ -64,7 +64,7 @@ const Create: NextPageWithLayout = () => {
           mb: 3,
         }}
       >
-        Back
+        Applications
       </Button>
       <Typography variant='h4' mb={2}>
         Add a job application

@@ -1,7 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import DbService from '../../../services/db'
+import db from '../../../services/db'
 import PhoneService from '../../../services/phone'
 import SocketService from '../../../services/socket'
+import { UserSettings, JobApplication } from '../../../types'
+
+type UserWithApplications = UserSettings & {
+  applications: (Omit<JobApplication, 'interviewDate'> & {
+    interviewDate: number
+  })[]
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -14,68 +21,79 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // console.log(res.data)
 
-    const users = await DbService.getUsersWithNotificationsOn()
+    console.log('Checking interview reminders...')
 
-    if (users.length) {
-      const userIds = users.map(({ id }) => id)
-      const nowMs = Date.now()
-      const nowMin = Math.round(nowMs / 1000 / 60)
-
-      const applications = await DbService.getApplicationsWithFutureInterviewsByUserIds(
-        userIds,
-        nowMs
-      )
-
-      applications.forEach(application => {
-        const user = users.find(({ id }) => id === application.userId)
-
-        if (user) {
-          const sendReminder = async (timeBefore: 'week' | 'day' | 'hour') => {
-            let date = new Date(application.interviewDate!)
-            if (timeBefore === 'week') {
-              date.setDate(date.getDate() - 7)
-            } else if (timeBefore === 'day') {
-              date.setDate(date.getDate() - 1)
-            } else {
-              date.setHours(date.getHours() - 1)
-            }
-
-            const notificationTimeMin = Math.round(date.getTime() / 1000 / 60)
-            if (nowMin === notificationTimeMin) {
-              const notification = {
-                title: 'Reminder',
-                message: `Interview coming up in 1 ${timeBefore}`,
-                createdAt: Date.now(),
-                seen: false,
-              }
-
-              await DbService.createNotification(notification)
-
-              SocketService.sendNotificationToUser(user.id, notification)
-
-              PhoneService.sendTextMessage(
-                user.phoneNumber!,
-                `Hi there! Just a friendly reminder that you have an interview in 1 ${timeBefore} with ${application.companyName}.`
-              )
-
-              console.log(nowMin, notificationTimeMin)
-            }
-          }
-
-          if (user.notifications.weekBefore) {
-            sendReminder('week')
-          }
-
-          if (user.notifications.dayBefore) {
-            sendReminder('day')
-          }
-
-          if (user.notifications.hourBefore) {
-            sendReminder('hour')
-          }
+    const nowMs = Date.now()
+    const nowMin = Math.round(nowMs / 1000 / 60)
+    const cli = await db.client()
+    const users = await cli.collection('settings').aggregate([
+      {
+        $project: {
+          _id: 0,
+          id: { $toString: '$_id' },
+          phoneNumber: 1,
+          textRemindersDisabled: 1,
         }
+      },
+      {
+        $lookup: {
+          from: 'applications',
+          localField: 'id',
+          foreignField: 'userId',
+          pipeline: [
+            {
+              $match: {
+                interviewDate: { $ne: null, $gt: nowMs },
+                interviewReminders: { $ne: [] }
+              }
+            }
+          ],
+          as: 'applications'
+        }
+      },
+    ]).toArray() as UserWithApplications[]
+
+    // console.log(JSON.stringify(users, null, 2))
+    // res.json(users)
+
+    const date = new Date()
+    users.forEach(user => {
+      user.applications.forEach(application => {
+        application.interviewReminders.forEach(minutesBefore => {
+          date.setTime(application.interviewDate)
+          date.setMinutes(date.getMinutes() - minutesBefore)
+
+          const notificationTimeMin = Math.round(date.getTime() / 1000 / 60)
+
+          if (nowMin === notificationTimeMin) {
+            const notification = {
+              title: 'Reminder',
+              message: `Interview with ${application.companyName} on ${date.toLocaleDateString()}`,
+              createdAt: Date.now(),
+              seen: false,
+            }
+            
+            db.createNotification(user.id, notification)
+              .then(() => {
+                SocketService.sendNotificationToUser(user.id, notification)
+                
+                if (user.phoneNumber && !user.textRemindersDisabled) {
+                  PhoneService.sendTextMessage(
+                    user.phoneNumber,
+                    `Hi there! Just a friendly reminder that you have an interview with ${application.companyName} on ${date.toLocaleDateString()}`
+                  )
+                }
+      
+                console.log('SENDING REMINDER')
+                console.log(nowMin, notificationTimeMin)
+              })
+              .catch(error => {
+                console.log(error)
+              })
+          }
+        })
       })
-    }
+    })
 
     res.status(200).end()
   } catch (err) {

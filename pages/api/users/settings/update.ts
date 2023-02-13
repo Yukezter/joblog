@@ -15,8 +15,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   const { user } = session
-  const { notifications } = req.body as Body
-  const data = await DbService.updateUserSettings(user.id, { notifications })
+  const body = req.body as Body
+  const settings = {
+    textRemindersDisabled: body.textRemindersDisabled
+  }
+  
+  const data = await DbService.updateUserSettings(user.id, settings)
 
   res.json(data)
 }

@@ -11,7 +11,6 @@ const useEditApplication = (options: UseMutationOptions<Data, unknown, Variables
   const queryClient = useQueryClient()
 
   return useMutation<Data, unknown, Variables>(
-    ['applications', 'edit'],
     async ({ id, data }) => {
       const response = await httpAPI.post(`/applications/edit/${id}`, data)
       return response.data
@@ -19,8 +18,9 @@ const useEditApplication = (options: UseMutationOptions<Data, unknown, Variables
     {
       ...options,
       async onSuccess(data, { id }) {
-        queryClient.setQueryData(['applications', id], data)
-        await queryClient.resetQueries(['applications'], { exact: true })
+        await queryClient.refetchQueries(['applications'])
+        queryClient.setQueryData(['application', id], data)
+        await queryClient.refetchQueries(['application', id], { exact: true })
       },
     }
   )

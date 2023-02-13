@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { user } = session
     const { to: phoneNumber, code } = req.body as Body
     await PhoneService.checkVerification(phoneNumber, code)
-    await DbService.updateUser(user.id, { phoneNumber })
+    await DbService.updateUserSettings(user.id, { phoneNumber })
 
     res.status(200).end()
   } catch (err) {

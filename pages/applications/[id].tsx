@@ -45,7 +45,6 @@ const Application: NextPageWithLayout = () => {
   const router = useRouter()
   const { id } = router.query
   const { data } = useApplication(id as string)
-
   return (
     <div>
       <Box display='flex' justifyContent='space-between' alignItems='center' mb={2}>
@@ -58,7 +57,7 @@ const Application: NextPageWithLayout = () => {
             textTransform: 'none',
           }}
         >
-          Back
+          Applications
         </Button>
         <Button
           component={Link}
