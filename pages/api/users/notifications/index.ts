@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import getServerSession from '../../../utils/getServerSession'
-import DbService from '../../../services/db'
+import getServerSession from '../../../../utils/getServerSession'
+import DbService from '../../../../services/db'
 
 export type Data = NonNullable<Awaited<ReturnType<typeof DbService['getNotifications']>>>
 

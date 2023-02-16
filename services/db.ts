@@ -98,7 +98,19 @@ export default class DbService {
   static async getNotifications(id: string) {
     const db = await this.getDB()
     const notifications = db.collection<UserNotification>('notifications')
-    return notifications.find({ userId: id }).toArray()
+    return notifications.find(
+      { userId: id },
+      { sort: { createdAt: -1 } }
+    ).toArray()
+  }
+
+  static async readNotifications(userId: string, ids: string[]) {
+    const db = await this.getDB()
+    const notifications = db.collection<UserNotification>('notifications')
+    await notifications.updateMany(
+      { _id: { $in: ids.map(id => new ObjectId(id)) }, userId },
+      { $set: { seen: true } }
+    )
   }
 
   static async getApplication({ id, userId }: Partial<JobApplication>) {

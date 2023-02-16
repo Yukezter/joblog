@@ -223,7 +223,7 @@ const ApplicationForm = (props: ApplicationFormProps) => {
     if (props.defaultValues) {
       reset(props.defaultValues)
     }
-  }, [props.defaultValues?.id])
+  }, [props.defaultValues, reset])
 
   const { fields, append, update, remove } = useFieldArray({
     control,

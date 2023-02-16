@@ -52,6 +52,15 @@ const NotificationsPopper = () => {
     return data
   })
 
+  const seeNotifications = useMutation<void, unknown, string[]>(async data => {
+    await httpAPI.post('/users/notifications/read', data)
+  }, {
+    onSuccess() {
+      queryClient.cancelQueries(['notifications'])
+      queryClient.refetchQueries(['notifications'])
+    }
+  })
+
   React.useEffect(() => {
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
       userAuthentication: {
@@ -64,7 +73,12 @@ const NotificationsPopper = () => {
 
     pusher.user.bind('notification', (context: UserNotification) => {
       console.log(context)
-      queryClient.setQueryData(['notifications'], context)
+
+      queryClient.cancelQueries(['notifications'])
+      queryClient.setQueryData<UserNotification[]>(
+        ['notifications'],
+        (data = []) => [...data, context]
+      )
       queryClient.refetchQueries(['notifications'])
     })
   }, [])
@@ -79,12 +93,22 @@ const NotificationsPopper = () => {
       return
     }
 
+    if (notifications.data) {
+      const unseen = notifications.data.filter(notification => {
+        return !notification.seen
+      }).map(notification => notification.id)
+
+      if (unseen.length) {
+        seeNotifications.mutate(unseen)
+      }
+    }
+
     setOpen(false)
   }
 
   const canBeOpen = open && Boolean(anchorEl)
   const id = canBeOpen ? 'notifications-popup' : undefined
-
+  console.log(notifications.data)
   return (
     <div>
       <IconButton aria-describedby={id} color='inherit' onClick={handleClick}>
@@ -100,18 +124,25 @@ const NotificationsPopper = () => {
       >
         {({ TransitionProps }) => (
           <Fade {...TransitionProps} timeout={350}>
-            <Paper sx={{ p: 1 }}>
+            <Paper>
               <ClickAwayListener onClickAway={handleClose}>
-                <List>
-                  {notifications.data?.map(notification => (
-                    <ListItem>
-                      <ListItemText
-                        primary={notification.title}
-                        secondary={notification.message}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
+                <Box width={300} height={300} display='flex' flexDirection='column'>
+                  <Box bgcolor='grey.200' >
+                    <Typography variant='h6' px={1} py={0.5}>
+                      Notifications
+                    </Typography>
+                  </Box>
+                  <List dense disablePadding sx={{ minHeight: 0, overflowY: 'auto' }}>
+                    {notifications.data?.map(notification => (
+                      <ListItem divider>
+                        <ListItemText
+                          primary='Reminder'
+                          secondary={notification.message}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
               </ClickAwayListener>
             </Paper>
           </Fade>
@@ -345,9 +376,11 @@ const a11yProps = (index: number) => {
 
 type FormSettings = Omit<UserSettings, 'phoneNumber'>
 
-const NotificationsSettings = () => {
-  const auth = useAuth()
-  const settings = useSettings(auth.user?.id)
+type NotificationSettingsProps = {
+  settings: ReturnType<typeof useSettings>
+}
+
+const NotificationsSettings = ({ settings }: NotificationSettingsProps) => {
   const queryClient = useQueryClient()
   const updateSettings = useMutation<void, unknown, FormSettings>(
     data => httpAPI.post('/users/settings/update', data),
@@ -474,6 +507,9 @@ const NotificationsSettings = () => {
 }
 
 const Settings = () => {
+  const auth = useAuth()
+  const settings = useSettings(auth.user?.id)
+
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false)
 
   const openSettings = () => {
@@ -538,7 +574,7 @@ const Settings = () => {
                 General settings coming soon!
               </TabPanel>
               <TabPanel tab={tab} index={1}>
-                <NotificationsSettings />
+                <NotificationsSettings settings={settings} />
               </TabPanel>
             </Grid>
           </Grid>
@@ -573,56 +609,3 @@ const PrivateLayout = ({ children }: PrivateLayoutProps) => {
 }
 
 export default PrivateLayout
-/* <FormGroup>
-            <FormControlLabel
-              disabled={!settings.data?.phoneNumber}
-              control={
-                <Controller
-                  name='notifications.weekBefore'
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      onChange={e => field.onChange(e.target.checked)}
-                    />
-                  )}
-                />
-              }
-              label='1 week before'
-            />
-            <FormControlLabel
-              disabled={!settings.data?.phoneNumber}
-              control={
-                <Controller
-                  name='notifications.dayBefore'
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      onChange={e => field.onChange(e.target.checked)}
-                    />
-                  )}
-                />
-              }
-              label='1 day before'
-            />
-            <FormControlLabel
-              disabled={!settings.data?.phoneNumber}
-              control={
-                <Controller
-                  name='notifications.hourBefore'
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      onChange={e => field.onChange(e.target.checked)}
-                    />
-                  )}
-                />
-              }
-              label='1 hour before'
-            />
-          </FormGroup> */
