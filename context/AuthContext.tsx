@@ -32,8 +32,6 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
 
   React.useEffect(() => {
     if (status === 'authenticated') {
-      console.log('Session updated:', session.user)
-      // setUser(session.user)
       setData(session)
     } else if (status === 'unauthenticated') {
       Router.push('/auth/signin')

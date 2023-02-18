@@ -98,9 +98,13 @@ export default class DbService {
   static async getNotifications(id: string) {
     const db = await this.getDB()
     const notifications = db.collection<UserNotification>('notifications')
-    return notifications.find(
-      { userId: id },
-      { sort: { createdAt: -1 } }
+    return notifications.aggregate(
+      [
+        { $match: { userId: id } },
+        addIdFieldStage,
+        projectWithout_IdStage,
+        { $sort: { createdAt: -1 } }
+      ]
     ).toArray()
   }
 
@@ -111,6 +115,12 @@ export default class DbService {
       { _id: { $in: ids.map(id => new ObjectId(id)) }, userId },
       { $set: { seen: true } }
     )
+  }
+
+  static async clearNotifications(userId: string) {
+    const db = await this.getDB()
+    const notifications = db.collection<UserNotification>('notifications')
+    await notifications.deleteMany({ userId })
   }
 
   static async getApplication({ id, userId }: Partial<JobApplication>) {

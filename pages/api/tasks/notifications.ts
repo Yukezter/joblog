@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import getServerSession from '../../../utils/getServerSession'
+// import getServerSession from '../../../utils/getServerSession'
 import db from '../../../services/db'
 import PhoneService from '../../../services/phone'
 import SocketService from '../../../services/socket'
@@ -16,12 +16,17 @@ type UserWithApplications = UserSettings & {
 
 const mockNotifications = async (req: NextApiRequest, res: NextApiResponse) => {
   // const session = await getServerSession(req, res)
+  const date = new Date()
+  const end = date.getTime()
+  date.setFullYear(2022, 11, 1)
+  const start = date.getTime()
+  const getRandomTime = () => start + (Math.round(Math.random() * (end - start)))
   const notifications = Array.from(Array(5)).map(() => ({
     title: 'Notification',
     message: 'Interview with Microsoft in 5 minutes.',
     seen: false,
-    createdAt: Date.now(),
-    userId: '63e9799d626fc577d0f8eae5',
+    createdAt: getRandomTime(),
+    userId: '63e982ae626fc577d0f8eaea',
   }))
 
   const cli = await db.client()

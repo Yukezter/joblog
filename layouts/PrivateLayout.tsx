@@ -35,6 +35,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications'
 import CloseIcon from '@mui/icons-material/Close'
 // import LogoutIcon from '@mui/icons-material/Logout'
 import AccountIcon from '@mui/icons-material/AccountBox'
+import Spinner from '@mui/material/CircularProgress'
 import type { UserNotification, UserSettings } from '../types'
 import httpAPI from '../utils/httpAPI'
 import { AuthProvider, useAuth } from '../context/AuthContext'
@@ -43,23 +44,102 @@ import Navbar from '../components/Navbar'
 import NavbarBrand from '../components/NavbarBrand'
 import Link from '../components/Link'
 
+const useNotifications = () => {
+  return useQuery(['notifications'], async () => {
+    const { data } = await httpAPI.get<UserNotification[]>('/users/notifications')
+    return data
+  })
+}
+
+const Notifications = ({ notifications }: { notifications: ReturnType<typeof useNotifications> }) => {
+
+  if (notifications.isLoading) {
+    return <Spinner />
+  }
+
+  if (notifications.isError) {
+    return <Spinner />
+  }
+
+  if (!notifications.data.length) {
+    return <Typography variant='body2' m='auto'>No Notifications</Typography>
+  }
+
+  return (
+    <List dense disablePadding>
+      {notifications.data.map(notification => (
+        <ListItem key={notification.id} divider sx={{ ...(!notification.seen && { bgcolor: 'grey.200' }) }}>
+          <ListItemText
+            primary={new Date(notification.createdAt).toLocaleDateString()}
+            secondary={notification.message}
+          />
+        </ListItem>
+      ))}
+    </List>
+  )
+}
+
 const NotificationsPopper = () => {
   const [open, setOpen] = React.useState(false)
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
   const queryClient = useQueryClient()
-  const notifications = useQuery(['notifications'], async () => {
-    const { data } = await httpAPI.get<UserNotification[]>('/users/notifications')
-    return data
-  })
+  const notifications = useNotifications()
 
   const seeNotifications = useMutation<void, unknown, string[]>(async data => {
     await httpAPI.post('/users/notifications/read', data)
   }, {
-    onSuccess() {
+    onMutate(data) {
+      // Cancel current query and optimistically update unread notifications
       queryClient.cancelQueries(['notifications'])
-      queryClient.refetchQueries(['notifications'])
+      queryClient.setQueryData<UserNotification[]>(
+        ['notifications'],
+        (currentNotifications = []) => {
+          return currentNotifications.map(notification => {
+            if (data.includes(notification.id)) {
+              return {
+                ...notification,
+                seen: true,
+              }
+            }
+
+            return notification
+          })
+        }
+      )
+    },
+    onSettled() {
+      queryClient.refetchQueries<UserNotification[]>(['notifications'])
     }
   })
+
+  const handleSeeNotifications = () => {
+    if (notifications.data) {
+      const unseen = notifications.data.filter(notification => {
+        return !notification.seen
+      })
+
+      if (unseen.length) {
+        seeNotifications.mutate(unseen.map(notification => notification.id))
+      }
+    }
+  }
+
+  const clearNotifications = useMutation(async () => {
+    await httpAPI.post('/users/notifications/clear')
+  }, {
+    onMutate() {
+      // Cancel current query and optimistically clear notifications
+      queryClient.cancelQueries(['notifications'])
+      queryClient.setQueryData<UserNotification[]>(['notifications'], [])
+    },
+    onSettled() {
+      queryClient.refetchQueries<UserNotification[]>(['notifications'])
+    }
+  })
+
+  const handleClearNotifications = () => {
+    clearNotifications.mutate()
+  }
 
   React.useEffect(() => {
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
@@ -74,18 +154,29 @@ const NotificationsPopper = () => {
     pusher.user.bind('notification', (context: UserNotification) => {
       console.log(context)
 
+      // Cancel current query and optimistically add new notification
       queryClient.cancelQueries(['notifications'])
       queryClient.setQueryData<UserNotification[]>(
         ['notifications'],
         (data = []) => [...data, context]
       )
-      queryClient.refetchQueries(['notifications'])
+
+      queryClient.refetchQueries<UserNotification[]>(['notifications'])
     })
   }, [])
-
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+  
+  const shouldMarkAsSeen = React.useRef(false)
+  
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
-    setOpen(previousOpen => !previousOpen)
+    setOpen(previousOpen => {
+      const newOpen = !previousOpen
+      if (!newOpen) {
+        shouldMarkAsSeen.current = true
+      }
+
+      return newOpen
+    })
   }
 
   const handleClose = (event: Event | React.SyntheticEvent) => {
@@ -93,25 +184,27 @@ const NotificationsPopper = () => {
       return
     }
 
-    if (notifications.data) {
-      const unseen = notifications.data.filter(notification => {
-        return !notification.seen
-      }).map(notification => notification.id)
-
-      if (unseen.length) {
-        seeNotifications.mutate(unseen)
-      }
-    }
-
+    shouldMarkAsSeen.current = true
     setOpen(false)
   }
 
+  // Mark notifications as seen whenever user closes the notifications popper
+  // The shouldMarkAsSeen ref ensures handleSeeNotifications only runs once when popper closes
+  React.useEffect(() => {
+    if (!shouldMarkAsSeen.current) {
+      return
+    }
+
+    handleSeeNotifications()
+    shouldMarkAsSeen.current = false
+  }, [handleSeeNotifications])
+
   const canBeOpen = open && Boolean(anchorEl)
   const id = canBeOpen ? 'notifications-popup' : undefined
-  console.log(notifications.data)
+  
   return (
     <div>
-      <IconButton aria-describedby={id} color='inherit' onClick={handleClick}>
+      <IconButton aria-describedby={id} color='inherit' onClick={handleOpen}>
         <NotificationsIcon />
       </IconButton>
       <Popper
@@ -126,22 +219,23 @@ const NotificationsPopper = () => {
           <Fade {...TransitionProps} timeout={350}>
             <Paper>
               <ClickAwayListener onClickAway={handleClose}>
-                <Box width={300} height={300} display='flex' flexDirection='column'>
-                  <Box bgcolor='grey.200' >
-                    <Typography variant='h6' px={1} py={0.5}>
-                      Notifications
+                <Box width={300}display='flex' flexDirection='column'>
+                  <Box display='flex' justifyContent='space-between' px={1.5} py={0.5}>
+                    <Typography variant='h6' display='flex' alignItems='center'>
+                      Your Notifications
                     </Typography>
+                    <Button
+                      variant='text'
+                      disabled={!notifications.data?.length}
+                      onClick={handleClearNotifications}
+                    >
+                      Clear All
+                    </Button>
                   </Box>
-                  <List dense disablePadding sx={{ minHeight: 0, overflowY: 'auto' }}>
-                    {notifications.data?.map(notification => (
-                      <ListItem divider>
-                        <ListItemText
-                          primary='Reminder'
-                          secondary={notification.message}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
+                  <Divider />
+                  <Box maxHeight={300} minHeight={120} display='flex' sx={{ overflowY: 'auto' }}>
+                    <Notifications notifications={notifications} />
+                  </Box>
                 </Box>
               </ClickAwayListener>
             </Paper>
