@@ -42,7 +42,6 @@ const Home: NextPage = () => {
         styles={theme => ({
           body: {
             background: `url(${landingImage.src})`,
-            // background: `linear-gradient(0deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.6)), url(${landingImage.src})`,
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'bottom left',
             backgroundSize: 'cover',
