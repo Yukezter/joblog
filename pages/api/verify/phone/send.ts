@@ -15,6 +15,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(401).end()
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    return res.status(200).end()
+  }
+
   const { to } = req.body as Body
   await PhoneService.sendVerificationCode(to)
 

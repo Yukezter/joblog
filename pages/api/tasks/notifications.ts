@@ -34,6 +34,7 @@ const mockNotifications = async (req: NextApiRequest, res: NextApiResponse) => {
   await cli.collection('notifications').insertMany(notifications)
 }
 
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     console.log('Checking interview reminders...')
