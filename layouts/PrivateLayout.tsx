@@ -67,14 +67,17 @@ const Notifications = ({ notifications }: { notifications: ReturnType<typeof use
 
   return (
     <List dense disablePadding>
-      {notifications.data.map(notification => (
-        <ListItem key={notification.id} divider sx={{ ...(!notification.seen && { bgcolor: 'grey.200' }) }}>
-          <ListItemText
-            primary={new Date(notification.createdAt).toLocaleDateString()}
-            secondary={notification.message}
-          />
-        </ListItem>
-      ))}
+      {notifications.data.map(notification => {
+        const date = new Date(notification.createdAt)
+        return (
+          <ListItem key={notification.id} divider sx={{ ...(!notification.seen && { bgcolor: 'grey.100' }) }}>
+            <ListItemText
+              primary={date.toLocaleDateString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}
+              secondary={notification.message}
+            />
+          </ListItem>
+        )
+      })}
     </List>
   )
 }

@@ -20,10 +20,11 @@ const mockNotifications = async (req: NextApiRequest, res: NextApiResponse) => {
   const end = date.getTime()
   date.setFullYear(2022, 11, 1)
   const start = date.getTime()
+  // Get a random time between now and Dec 1st, 2022
   const getRandomTime = () => start + (Math.round(Math.random() * (end - start)))
   const notifications = Array.from(Array(5)).map(() => ({
     title: 'Notification',
-    message: 'Interview with Microsoft in 5 minutes.',
+    message: 'Your interview with Microsoft in 5 minutes.',
     seen: false,
     createdAt: getRandomTime(),
     userId: '63e982ae626fc577d0f8eaea',
@@ -35,6 +36,13 @@ const mockNotifications = async (req: NextApiRequest, res: NextApiResponse) => {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    console.log('Checking interview reminders...')
+
+    if (process.env.MOCK_NOTIFICATIONS === 'true') {
+      await mockNotifications(req, res)
+      return res.status(200).end()
+    }
+
     // console.log(req.headers)
     // const res = await axios.get('https://oauth2.googleapis.com/tokeninfo', {
     //   params: {
@@ -44,77 +52,75 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // console.log(res.data)
 
-    console.log('Checking interview reminders...')
-    await mockNotifications(req, res)
-    // const nowMs = Date.now()
-    // const nowMin = Math.round(nowMs / 1000 / 60)
-    // const cli = await db.client()
-    // const users = await cli.collection('settings').aggregate([
-    //   {
-    //     $project: {
-    //       _id: 0,
-    //       id: { $toString: '$_id' },
-    //       phoneNumber: 1,
-    //       textRemindersDisabled: 1,
-    //     }
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: 'applications',
-    //       localField: 'id',
-    //       foreignField: 'userId',
-    //       pipeline: [
-    //         {
-    //           $match: {
-    //             interviewDate: { $ne: null, $gt: nowMs },
-    //             interviewReminders: { $ne: [] }
-    //           }
-    //         }
-    //       ],
-    //       as: 'applications'
-    //     }
-    //   },
-    // ]).toArray() as UserWithApplications[]
+    const nowMs = Date.now()
+    const nowMin = Math.round(nowMs / 1000 / 60)
+    const cli = await db.client()
+    const users = await cli.collection('settings').aggregate([
+      {
+        $project: {
+          _id: 0,
+          id: { $toString: '$_id' },
+          phoneNumber: 1,
+          textRemindersDisabled: 1,
+        }
+      },
+      {
+        $lookup: {
+          from: 'applications',
+          localField: 'id',
+          foreignField: 'userId',
+          pipeline: [
+            {
+              $match: {
+                interviewDate: { $ne: null, $gt: nowMs },
+                interviewReminders: { $ne: [] }
+              }
+            }
+          ],
+          as: 'applications'
+        }
+      },
+    ]).toArray() as UserWithApplications[]
 
-    // const date = new Date()
-    // users.forEach(user => {
-    //   user.applications.forEach(application => {
-    //     application.interviewReminders.forEach(minutesBefore => {
-    //       date.setTime(application.interviewDate)
-    //       date.setMinutes(date.getMinutes() - minutesBefore)
+    const date = new Date()
+    users.forEach(user => {
+      user.applications.forEach(application => {
+        application.interviewReminders.forEach(minutesBefore => {
+          date.setTime(application.interviewDate)
+          date.setMinutes(date.getMinutes() - minutesBefore)
 
-    //       const notificationTimeMin = Math.round(date.getTime() / 1000 / 60)
+          const notificationTimeMin = Math.round(date.getTime() / 1000 / 60)
 
-    //       if (nowMin === notificationTimeMin) {
-    //         const label = INTERVIEW_REMINDER_TIMES[minutesBefore as Minutes].toLowerCase()
-    //         const notification = {
-    //           title: 'Reminder',
-    //           message: `Interview with ${application.companyName} in ${label}.`,
-    //           createdAt: Date.now(),
-    //           seen: false,
-    //         }
+          if (nowMin === notificationTimeMin) {
+            const label = INTERVIEW_REMINDER_TIMES[minutesBefore as Minutes].toLowerCase()
+            const notification = {
+              title: 'Reminder',
+              message: `Your interview with ${application.companyName} in ${label}.`,
+              createdAt: nowMs,
+              seen: false,
+            }
             
-    //         db.createNotification(user.id, notification)
-    //           .then(() => {
-    //             SocketService.sendNotificationToUser(user.id, notification)
+            db.createNotification(user.id, notification)
+              .then(() => {
+                SocketService.sendNotificationToUser(user.id, notification)
                 
-    //             if (user.phoneNumber && !user.textRemindersDisabled) {
-    //               PhoneService.sendTextMessage(
-    //                 user.phoneNumber,
-    //                 `Hi there! Just a friendly reminder that you have an interview with ${application.companyName} in ${label}.`
-    //               )
-    //             }
+                if (user.phoneNumber && !user.textRemindersDisabled) {
+                  PhoneService.sendTextMessage(
+                    user.phoneNumber,
+                    `Hi there! Just a friendly reminder of your interview with ${application.companyName} in ${label}.`
+                  )
+                }
       
-    //             console.log('SENDING REMINDER')
-    //             console.log(nowMin, notificationTimeMin)
-    //           })
-    //           .catch(error => {
-    //             console.log(error)
-    //           })
-    //       }
-    //     })
-    //   })
-    // })
+                console.log('NOTIFACTION REMINDER SENT')
+                console.log(notification)
+              })
+              .catch(error => {
+                console.log(error)
+              })
+          }
+        })
+      })
+    })
 
     res.status(200).end()
   } catch (err) {
